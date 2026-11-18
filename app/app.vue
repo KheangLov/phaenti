@@ -29,9 +29,12 @@
         :animate="{ x: picking ? 80 : 0 }"
         :transition="spring"
       >
+        <button class="glass shadow-float grid size-11 place-items-center rounded-2xl active:scale-90 transition" aria-label="Map style" @click="styleOpen = true">
+          <UIcon name="i-lucide-layers" class="size-5" />
+        </button>
         <UDropdownMenu :items="menu" :content="{ align: 'end', side: 'left', sideOffset: 8 }">
           <button class="glass shadow-float grid size-11 place-items-center rounded-2xl active:scale-90 transition" aria-label="Menu">
-            <UIcon name="i-lucide-layers" class="size-5" />
+            <UIcon name="i-lucide-ellipsis" class="size-5" />
           </button>
         </UDropdownMenu>
         <button class="glass shadow-float grid size-11 place-items-center rounded-2xl active:scale-90 transition" aria-label="Show all places" @click="mapApi?.fitAll()">
@@ -162,13 +165,14 @@
       </BottomSheet>
 
       <InstallSheet v-model:open="installOpen" />
+      <MapStyleSheet v-model:open="styleOpen" />
       <OfflineSheet v-model:open="offlineOpen" />
 
       <UModal v-model:open="creditsOpen" title="Map credits" description="Phaenti is built on open data and open-source software.">
         <template #body>
           <ul class="space-y-3 text-sm">
             <li><b>Map data</b> © <a class="underline" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL)</li>
-            <li><b>Map tiles</b> <a class="underline" href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a>, <a class="underline" href="https://openmaptiles.org" target="_blank" rel="noopener">OpenMapTiles</a></li>
+            <li><b>Map tiles</b> <a class="underline" href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a>, <a class="underline" href="https://openmaptiles.org" target="_blank" rel="noopener">OpenMapTiles</a>; Colorful &amp; Natural styles by <a class="underline" href="https://versatiles.org" target="_blank" rel="noopener">VersaTiles</a></li>
             <li><b>Cambodia boundaries</b> Open Development Cambodia (2014), via <a class="underline" href="https://www.geoboundaries.org" target="_blank" rel="noopener">geoBoundaries</a>, CC BY 4.0</li>
             <li><b>Khmer names &amp; villages</b> <a class="underline" href="https://github.com/dwilkie/pumi" target="_blank" rel="noopener">Pumi</a> (MIT)</li>
             <li><b>Place search</b> <a class="underline" href="https://photon.komoot.io" target="_blank" rel="noopener">Photon by komoot</a></li>
@@ -245,6 +249,7 @@ async function locate() {
 // ---- Install ----
 const { online } = useOffline()
 const installOpen = ref(false)
+const styleOpen = ref(false)
 const offlineOpen = ref(false)
 const search = ref<{ openSearch: () => void }>()
 const standalone = ref(isStandalone())
@@ -324,27 +329,11 @@ const menu = computed<DropdownMenuItem[][]>(() => [
     { label: 'Restore from file', icon: 'i-lucide-upload', onSelect: () => fileInput.value?.click() },
   ],
   [
-    { type: 'label', label: 'Cambodia layers' },
-    {
-      label: 'Boundaries',
-      icon: 'i-lucide-square-dashed',
-      type: 'checkbox',
-      checked: showBoundaries.value,
-      onUpdateChecked: (v: boolean) => (showBoundaries.value = v),
-      onSelect: (e: Event) => e.preventDefault(),
-    },
-    {
-      label: 'Explored areas',
-      icon: 'i-lucide-sparkles',
-      type: 'checkbox',
-      checked: showExplored.value,
-      onUpdateChecked: (v: boolean) => (showExplored.value = v),
-      onSelect: (e: Event) => e.preventDefault(),
-    },
+    { label: 'Map style & layers', icon: 'i-lucide-layers', onSelect: () => (styleOpen.value = true) },
   ],
   [
     {
-      label: colorMode.value === 'dark' ? 'Light map' : 'Dark map',
+      label: colorMode.value === 'dark' ? 'Light mode' : 'Dark mode',
       icon: colorMode.value === 'dark' ? 'i-lucide-sun' : 'i-lucide-moon',
       onSelect: () => (colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'),
     },

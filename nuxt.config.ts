@@ -90,7 +90,7 @@ export default defineNuxtConfig({
       navigateFallback: 'index.html',
       navigateFallbackDenylist: [/^\/admin\//],
       // App shell + Cambodia boundaries, names and search index: all available offline from first launch
-      globPatterns: ['**/*.{js,mjs,css,html,png,svg,ico,webmanifest}', 'admin/**/*.{json,pbf}'],
+      globPatterns: ['**/*.{js,mjs,css,html,png,svg,ico,webmanifest}', 'admin/**/*.{json,pbf}', 'styles/*.json'],
       globIgnores: ['screenshots/**'],
       maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       cleanupOutdatedCaches: true,
@@ -118,6 +118,16 @@ export default defineNuxtConfig({
           options: {
             cacheName: 'map-tiles',
             expiration: { maxEntries: 40000, maxAgeSeconds: 60 * 60 * 24 * 120 },
+            cacheableResponse: { statuses: [0, 200] },
+          },
+        },
+        {
+          // VersaTiles tiles, glyphs, sprites (styles are bundled in /styles)
+          urlPattern: /^https:\/\/tiles\.versatiles\.org\/.*/,
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'map-tiles',
+            expiration: { maxEntries: 40000, maxAgeSeconds: 60 * 60 * 24 * 60 },
             cacheableResponse: { statuses: [0, 200] },
           },
         },

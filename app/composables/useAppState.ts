@@ -60,6 +60,13 @@ function pref(key: string, fallback: boolean) {
   }
   return r
 }
+const styleChoice = ref('auto')
+if (import.meta.client) {
+  try { styleChoice.value = localStorage.getItem('phaenti:style') || 'auto' } catch { /* ignore */ }
+  watch(styleChoice, (v) => {
+    try { localStorage.setItem('phaenti:style', v) } catch { /* ignore */ }
+  })
+}
 const showBoundaries = pref('phaenti:boundaries', true)
 const showExplored = pref('phaenti:explored', true)
 
@@ -91,7 +98,7 @@ export function useAppState() {
   }
   return {
     selectedId, draft, area, picking, searching, filter, snap, mapApi,
-    showBoundaries, showExplored,
+    showBoundaries, showExplored, styleChoice,
     select, openDraft, openArea, closeAll,
   }
 }

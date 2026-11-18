@@ -43,6 +43,14 @@ shown network address from a phone on the same Wi-Fi.
 - Map tiles you view are cached automatically; menu → Offline & storage can save "this area in detail" or a Cambodia overview (zoom 5–10)
 - Asks before applying updates; requests persistent storage when installed
 
+## Map styles
+
+Layers button → 12 looks with live previews: Auto (follows light/dark), Liberty, Positron, Bright,
+3D City (extruded buildings, tilt and rotate), Phaenti themes **Angkor**, **Mekong Night** and **Rice Paddy**
+(OpenFreeMap data repainted in `app/utils/mapStyles.ts`), Dark, Fiord, and VersaTiles Colorful & Natural
+(style JSON pinned in `public/styles`, generated with `@versatiles/style`). Picking a dark map switches the
+app's panels to dark too. Saved offline areas work with every style.
+
 ## Cambodia layers
 
 - Province, district and commune boundaries as static vector tiles (`public/admin/tiles`, z4–z11, ~2 MB, cached offline)

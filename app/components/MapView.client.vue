@@ -18,7 +18,8 @@
 </template>
 
 <script setup lang="ts">
-import type { Map as MLMap, GeoJSONSource, MapMouseEvent, MapTouchEvent, ExpressionSpecification } from 'maplibre-gl'
+import type { Map as MLMap, GeoJSONSource, MapMouseEvent, MapTouchEvent, ExpressionSpecification, StyleSpecification } from 'maplibre-gl'
+import { AUTO_STYLE, styleById, recolor, fontsOf, type MapStyleDef } from '~/utils/mapStyles'
 import { STATUS_COLORS } from '~/utils/db'
 import { categoryOf, type CategoryId } from '~/utils/categories'
 import { ensurePinImages } from '~/utils/pins'
@@ -35,8 +36,22 @@ const emit = defineEmits<{ moving: [boolean] }>()
 
 let map: MLMap | null = null
 let ml: typeof import('maplibre-gl') | null = null
-const isDark = computed(() => colorMode.value === 'dark')
-const styleUrl = () => `https://tiles.openfreemap.org/styles/${isDark.value ? 'dark' : 'liberty'}`
+const { styleChoice } = useAppState()
+const styleDef = computed(() => styleById(styleChoice.value === AUTO_STYLE ? (colorMode.value === 'dark' ? 'dark' : 'liberty') : styleChoice.value))
+const isDark = computed(() => styleDef.value.dark)
+let fonts = { regular: ['Noto Sans Regular'], bold: ['Noto Sans Bold'], italic: ['Noto Sans Italic'] }
+
+/** Style URL, or a repainted style object for Phaenti themes (base JSON is cached offline by the SW). */
+async function resolveStyle(def: MapStyleDef): Promise<string | StyleSpecification> {
+  const url = def.url.startsWith('/') ? `${location.origin}${def.url}` : def.url
+  if (!def.palette) return url
+  try {
+    const base = await (await fetch(url)).json()
+    return recolor(base, def.palette)
+  } catch {
+    return url
+  }
+}
 const EMPTY = { type: 'FeatureCollection', features: [] } as GeoJSON.FeatureCollection
 const LEVELS = ['province', 'district', 'commune'] as const
 type Level = typeof LEVELS[number]
@@ -73,6 +88,8 @@ async function addLayers() {
   layersReady = false
   await ensurePinImages(map)
   if (!map || map.getSource('places')) return
+  fonts = fontsOf(map.getStyle())
+  apply3D()
   addAdminLayers()
   addPlaceLayers()
   layersReady = true
@@ -186,7 +203,7 @@ function addAdminLayers() {
   map.addLayer({
     id: 'label-province', type: 'symbol', source: 'admin', 'source-layer': 'label_province', minzoom: 5, maxzoom: 8.5,
     layout: {
-      'text-field': ['upcase', ['get', 'name']], 'text-font': ['Noto Sans Bold'],
+      'text-field': ['upcase', ['get', 'name']], 'text-font': fonts.bold,
       'text-size': ['interpolate', ['linear'], ['zoom'], 5, 9.5, 8, 13], 'text-letter-spacing': 0.14, 'text-max-width': 7,
     },
     paint: { 'text-color': dark ? '#e2e8f0' : '#334155', 'text-halo-color': halo, 'text-halo-width': 1.4, 'text-opacity': 0.85 },
@@ -194,7 +211,7 @@ function addAdminLayers() {
   map.addLayer({
     id: 'label-district', type: 'symbol', source: 'admin', 'source-layer': 'label_district', minzoom: 8.3, maxzoom: 11,
     layout: {
-      'text-field': ['get', 'name'], 'text-font': ['Noto Sans Italic'], 'text-size': 11.5, 'text-max-width': 8,
+      'text-field': ['get', 'name'], 'text-font': fonts.italic, 'text-size': 11.5, 'text-max-width': 8,
       'symbol-sort-key': ['-', ['get', 'area']],
     },
     paint: { 'text-color': dark ? '#cbd5e1' : '#475569', 'text-halo-color': halo, 'text-halo-width': 1.3 },
@@ -202,7 +219,7 @@ function addAdminLayers() {
   map.addLayer({
     id: 'label-commune', type: 'symbol', source: 'admin', 'source-layer': 'label_commune', minzoom: 10.6, maxzoom: 13.5,
     layout: {
-      'text-field': ['get', 'name'], 'text-font': ['Noto Sans Italic'], 'text-size': 10.5, 'text-max-width': 8,
+      'text-field': ['get', 'name'], 'text-font': fonts.italic, 'text-size': 10.5, 'text-max-width': 8,
       'symbol-sort-key': ['-', ['get', 'area']],
     },
     paint: { 'text-color': dark ? '#a1a1aa' : '#64748b', 'text-halo-color': halo, 'text-halo-width': 1.2 },
@@ -246,7 +263,7 @@ function addPlaceLayers() {
   })
   map.addLayer({
     id: 'cluster-count', type: 'symbol', source: 'places', filter: ['has', 'point_count'],
-    layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': ['Noto Sans Bold'], 'text-size': 13, 'text-allow-overlap': true },
+    layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': fonts.bold, 'text-size': 13, 'text-allow-overlap': true },
     paint: { 'text-color': '#ffffff' },
   })
 
@@ -276,7 +293,7 @@ function addPlaceLayers() {
       'icon-ignore-placement': true,
       'symbol-sort-key': ['-', 0, ['get', 'lat']],
       'text-field': ['step', ['zoom'], '', 12.5, ['get', 'name']],
-      'text-font': ['Noto Sans Bold'],
+      'text-font': fonts.bold,
       'text-size': 11.5,
       'text-anchor': 'top',
       'text-offset': [0, 0.35],
@@ -372,10 +389,50 @@ watch(showExplored, () => {
   syncVisibility()
 })
 watch(showBoundaries, syncVisibility)
-watch(isDark, () => {
+let styleSeq = 0
+watch(styleDef, async (def) => {
+  const seq = ++styleSeq
+  const style = await resolveStyle(def)
+  if (seq !== styleSeq || !map) return
   layersReady = false
-  map?.setStyle(styleUrl())
+  map.setStyle(style, { diff: false })
 })
+
+// ---------- 3D ----------
+function apply3D() {
+  if (!map) return
+  const on = !!styleDef.value.extrude
+  if (on) {
+    const style = map.getStyle()
+    const bSrc = (style.layers as { source?: string; 'source-layer'?: string }[]).find(l => l['source-layer'] === 'building')?.source
+    if (bSrc && !map.getLayer('phaenti-3d')) {
+      const firstLabel = style.layers.find(l => l.type === 'symbol')?.id
+      map.addLayer({
+        id: 'phaenti-3d', type: 'fill-extrusion', source: bSrc, 'source-layer': 'building', minzoom: 13.5,
+        paint: {
+          'fill-extrusion-color': ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 6], 0, '#e8dfd3', 40, '#d4c5b3', 120, '#b9a58f'],
+          'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 13.5, 0, 15, ['coalesce', ['get', 'render_height'], 6]],
+          'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+          'fill-extrusion-opacity': 0.88,
+        },
+      }, firstLabel)
+    }
+    map.setMaxPitch(70)
+    map.dragRotate.enable()
+    map.touchPitch.enable()
+    map.touchZoomRotate.enableRotation()
+    map.easeTo({ pitch: 58, bearing: map.getBearing() || -18, zoom: Math.max(map.getZoom(), 15.4), duration: 1400 })
+  } else if (map.getPitch() || map.getBearing()) {
+    map.easeTo({ pitch: 0, bearing: 0, duration: 800 })
+    map.once('moveend', () => {
+      if (styleDef.value.extrude || !map) return
+      map.setMaxPitch(0)
+      map.dragRotate.disable()
+      map.touchPitch.disable()
+      map.touchZoomRotate.disableRotation()
+    })
+  }
+}
 
 // ---------- Camera helpers ----------
 function sheetPadding() {
@@ -453,9 +510,10 @@ onMounted(async () => {
   mod.setWorkerUrl(worker.default)
   ml = mod
   const cam = savedCamera()
+  const initialStyle = await resolveStyle(styleDef.value)
   map = new mod.Map({
     container: el.value!,
-    style: styleUrl(),
+    style: initialStyle,
     // Default view: Cambodia
     center: cam?.center ?? [104.9, 12.55],
     zoom: cam?.zoom ?? 6.2,
