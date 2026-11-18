@@ -35,6 +35,14 @@ shown network address from a phone on the same Wi-Fi.
 - Backup to a JSON file and restore (merges by id, newest edit wins); also imports GeoJSON
 - PWA: installable, app shell and viewed map tiles cached for offline use
 
+## Install & offline
+
+- Installable PWA: one-tap install on Android/Chrome/Edge, guided "Add to Home Screen" on iPhone (menu → Install app)
+- Home-screen shortcuts: Add a place, Search
+- Offline from first launch: app, your places, Cambodia boundaries and the province→village search index are precached (~860 files)
+- Map tiles you view are cached automatically; menu → Offline & storage can save "this area in detail" or a Cambodia overview (zoom 5–10)
+- Asks before applying updates; requests persistent storage when installed
+
 ## Cambodia layers
 
 - Province, district and commune boundaries as static vector tiles (`public/admin/tiles`, z4–z11, ~2 MB, cached offline)

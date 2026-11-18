@@ -4,7 +4,23 @@
       <MapView ref="mapView" @moving="moving = $event" />
 
       <!-- Top: search -->
-      <SearchOverlay :hidden="picking" />
+      <SearchOverlay ref="search" :hidden="picking" />
+
+      <!-- Offline indicator -->
+      <AnimatePresence>
+        <motion.button
+          v-if="!online && !picking"
+          key="offline"
+          class="absolute left-1/2 z-30 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white shadow-lg"
+          :style="{ top: 'calc(max(env(safe-area-inset-top), 12px) + 58px)' }"
+          :initial="{ y: -12, opacity: 0, scale: 0.9 }"
+          :animate="{ y: 0, opacity: 1, scale: 1 }"
+          :exit="{ y: -12, opacity: 0, scale: 0.9 }"
+          @click="offlineOpen = true"
+        >
+          <UIcon name="i-lucide-cloud-off" class="size-4" /> Offline · your data is here
+        </motion.button>
+      </AnimatePresence>
 
       <!-- Right: map controls -->
       <motion.div
@@ -102,8 +118,11 @@
                   <AnimatedNumber :value="counts.planned" /> want to go
                 </p>
               </div>
-              <button v-if="canInstall" class="rounded-full bg-(--ui-primary)/12 px-3 py-1.5 text-xs font-semibold text-(--ui-primary)" @click="install">
-                Install app
+              <button v-if="!standalone" class="flex items-center gap-1 rounded-full bg-(--ui-primary)/12 px-3 py-1.5 text-xs font-semibold text-(--ui-primary) active:scale-95 transition" @click="installOpen = true">
+                <UIcon name="i-lucide-download" class="size-3.5" /> Install app
+              </button>
+              <button v-else class="flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold active:scale-95 transition" :class="online ? 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/15 text-amber-600'" @click="offlineOpen = true">
+                <UIcon :name="online ? 'i-lucide-cloud-check' : 'i-lucide-cloud-off'" class="size-3.5" /> {{ online ? 'Offline ready' : 'Offline' }}
               </button>
             </div>
             <div class="mt-3 flex gap-1.5">
@@ -142,6 +161,9 @@
         </AnimatePresence>
       </BottomSheet>
 
+      <InstallSheet v-model:open="installOpen" />
+      <OfflineSheet v-model:open="offlineOpen" />
+
       <UModal v-model:open="creditsOpen" title="Map credits" description="Phaenti is built on open data and open-source software.">
         <template #body>
           <ul class="space-y-3 text-sm">
@@ -164,6 +186,7 @@
 import { motion, AnimatePresence } from 'motion-v'
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { Filter } from '~/composables/useAppState'
+import { isStandalone } from '~/composables/useOffline'
 
 const PEEK = 156
 const spring = { type: 'spring', stiffness: 420, damping: 38 } as const
@@ -220,10 +243,42 @@ async function locate() {
 }
 
 // ---- Install ----
-const canInstall = computed(() => !!$pwa?.showInstallPrompt && !$pwa?.isPWAInstalled)
-function install() {
-  $pwa?.install()
-}
+const { online } = useOffline()
+const installOpen = ref(false)
+const offlineOpen = ref(false)
+const search = ref<{ openSearch: () => void }>()
+const standalone = ref(isStandalone())
+
+// New version available: ask, never reload under the user's feet
+watch(() => $pwa?.needRefresh, (v) => {
+  if (!v) return
+  toast.add({
+    id: 'update',
+    title: 'A new version of Phaenti is ready',
+    icon: 'i-lucide-sparkles',
+    duration: 0,
+    actions: [{ label: 'Update', color: 'primary', onClick: () => void $pwa?.updateServiceWorker(true) }],
+  })
+}, { immediate: true })
+watch(() => $pwa?.offlineReady, (v) => {
+  if (v) toast.add({ title: 'Ready to work offline', description: 'The app, your places and Cambodia data are saved on this device.', icon: 'i-lucide-cloud-check', color: 'primary' })
+}, { immediate: true })
+
+// Suggest installing once, after the first saved place
+watch(() => places.value.length, (n, old) => {
+  if (standalone.value || n < 1 || (old ?? 0) >= 1) return
+  try {
+    if (localStorage.getItem('phaenti:install-nudge')) return
+    localStorage.setItem('phaenti:install-nudge', '1')
+  } catch { return }
+  setTimeout(() => toast.add({
+    title: 'Keep your map safe',
+    description: 'Install Phaenti so it works offline and your places are never cleared.',
+    icon: 'i-lucide-smartphone',
+    duration: 8000,
+    actions: [{ label: 'Install', color: 'primary', onClick: () => (installOpen.value = true) }],
+  }), 2600)
+})
 
 // ---- Backup ----
 async function exportBackup() {
@@ -260,6 +315,10 @@ async function onImport(e: Event) {
 }
 
 const menu = computed<DropdownMenuItem[][]>(() => [
+  [
+    ...(standalone.value ? [] : [{ label: 'Install app', icon: 'i-lucide-smartphone', onSelect: () => (installOpen.value = true) }]),
+    { label: 'Offline & storage', icon: 'i-lucide-cloud-download', onSelect: () => (offlineOpen.value = true) },
+  ],
   [
     { label: 'Back up places', icon: 'i-lucide-download', onSelect: exportBackup, disabled: !places.value.length },
     { label: 'Restore from file', icon: 'i-lucide-upload', onSelect: () => fileInput.value?.click() },
@@ -304,6 +363,21 @@ async function addHere() {
 
 // Back button / Escape closes panels
 onMounted(() => {
+  const mq = window.matchMedia('(display-mode: standalone)')
+  mq.addEventListener?.('change', () => (standalone.value = isStandalone()))
+  window.addEventListener('appinstalled', () => {
+    standalone.value = true
+    useOffline().requestPersist()
+  })
+  if (standalone.value) useOffline().requestPersist()
+
+  // Home-screen shortcuts: /?action=add, /?action=search
+  const params = new URLSearchParams(location.search)
+  const action = params.get('action')
+  if (action || params.has('source')) history.replaceState(null, '', '/')
+  if (action === 'add') setTimeout(startPicking, 400)
+  if (action === 'search') setTimeout(() => search.value?.openSearch(), 300)
+
   window.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return
     if (picking.value) picking.value = false

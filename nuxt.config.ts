@@ -25,12 +25,17 @@ export default defineNuxtConfig({
       meta: [
         { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content' },
         { name: 'description', content: 'Places you have been and places you want to go. Private, offline, on your phone.' },
-        { name: 'theme-color', content: '#0f172a' },
+        { name: 'theme-color', content: '#f8fafc', media: '(prefers-color-scheme: light)' },
+        { name: 'theme-color', content: '#0f172a', media: '(prefers-color-scheme: dark)' },
+        { name: 'apple-mobile-web-app-title', content: 'Phaenti' },
+        { name: 'application-name', content: 'Phaenti' },
+        { name: 'format-detection', content: 'telephone=no' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
         { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
       ],
       link: [
+        { rel: 'manifest', href: '/manifest.webmanifest' },
         { rel: 'icon', type: 'image/png', href: '/favicon.png' },
         { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
         { rel: 'preconnect', href: 'https://tiles.openfreemap.org', crossorigin: '' },
@@ -46,25 +51,58 @@ export default defineNuxtConfig({
   },
 
   pwa: {
-    registerType: 'autoUpdate',
+    // Ask before swapping in a new version, so an update never interrupts you
+    registerType: 'prompt',
+    includeAssets: ['favicon.png', 'apple-touch-icon.png'],
     manifest: {
+      id: '/',
       name: 'Phaenti — ផែនទី',
       short_name: 'Phaenti',
-      description: 'Places you have been and places you want to go.',
+      description: 'Your private travel map of Cambodia and beyond: places you have been and places you want to go. Works offline.',
+      lang: 'en',
+      dir: 'ltr',
+      start_url: '/?source=pwa',
+      scope: '/',
+      display: 'standalone',
+      display_override: ['standalone', 'minimal-ui'],
+      orientation: 'portrait',
       theme_color: '#0f172a',
       background_color: '#0f172a',
-      display: 'standalone',
-      orientation: 'portrait',
-      start_url: '/',
+      categories: ['travel', 'navigation', 'lifestyle'],
+      prefer_related_applications: false,
+      launch_handler: { client_mode: ['focus-existing', 'auto'] },
       icons: [
-        { src: '/pwa-192.png', sizes: '192x192', type: 'image/png' },
-        { src: '/pwa-512.png', sizes: '512x512', type: 'image/png' },
+        { src: '/pwa-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: '/pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
         { src: '/pwa-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      ],
+      screenshots: [
+        { src: '/screenshots/explore.png', sizes: '780x1688', type: 'image/png', form_factor: 'narrow', label: 'Explore Cambodia by province' },
+        { src: '/screenshots/place.png', sizes: '780x1688', type: 'image/png', form_factor: 'narrow', label: 'Save places with categories' },
+        { src: '/screenshots/search.png', sizes: '780x1688', type: 'image/png', form_factor: 'narrow', label: 'Search provinces, villages and places' },
+      ],
+      shortcuts: [
+        { name: 'Add a place', short_name: 'Add', url: '/?action=add', icons: [{ src: '/pwa-192.png', sizes: '192x192' }] },
+        { name: 'Search', short_name: 'Search', url: '/?action=search', icons: [{ src: '/pwa-192.png', sizes: '192x192' }] },
       ],
     },
     workbox: {
-      navigateFallback: '/',
-      globPatterns: ['**/*.{js,mjs,css,html,png,svg,ico,webmanifest}'],
+      navigateFallback: 'index.html',
+      navigateFallbackDenylist: [/^\/admin\//],
+      // App shell + Cambodia boundaries, names and search index: all available offline from first launch
+      globPatterns: ['**/*.{js,mjs,css,html,png,svg,ico,webmanifest}', 'admin/**/*.{json,pbf}'],
+      globIgnores: ['screenshots/**'],
+      maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+      cleanupOutdatedCaches: true,
+      // Nuxt adds its prerendered /200 and /404 shells; they're identical to "/" and
+      // not served at those paths on every host, which would break SW install.
+      manifestTransforms: [
+        async entries => ({
+          manifest: entries.filter((e, i, all) => !['200', '404', '200.html', '404.html'].includes(e.url) && all.findIndex(x => x.url === e.url) === i),
+          warnings: [],
+        }),
+      ],
+      clientsClaim: true,
       runtimeCaching: [
         {
           // Map style JSON: fresh when online, cached when offline
@@ -73,29 +111,24 @@ export default defineNuxtConfig({
           options: { cacheName: 'map-styles', cacheableResponse: { statuses: [0, 200] } },
         },
         {
-          // Vector tiles, fonts, sprites: versioned URLs, safe to cache-first
+          // Vector tiles, fonts, sprites: versioned URLs, safe to cache-first.
+          // "Save area for offline" writes into this same cache.
           urlPattern: /^https:\/\/tiles\.openfreemap\.org\/.*/,
           handler: 'CacheFirst',
           options: {
             cacheName: 'map-tiles',
-            expiration: { maxEntries: 4000, maxAgeSeconds: 60 * 60 * 24 * 45 },
+            expiration: { maxEntries: 40000, maxAgeSeconds: 60 * 60 * 24 * 120 },
             cacheableResponse: { statuses: [0, 200] },
           },
         },
         {
-          // Cambodia boundary tiles and lookup data (static, same origin)
-          urlPattern: ({ url }: { url: URL }) => url.pathname.startsWith('/admin/'),
-          handler: 'CacheFirst',
-          options: { cacheName: 'admin-data', expiration: { maxEntries: 1200 }, cacheableResponse: { statuses: [0, 200] } },
-        },
-        {
           urlPattern: /^https:\/\/photon\.komoot\.io\/.*/,
           handler: 'NetworkFirst',
-          options: { cacheName: 'geocoding', networkTimeoutSeconds: 4, expiration: { maxEntries: 200 } },
+          options: { cacheName: 'geocoding', networkTimeoutSeconds: 4, expiration: { maxEntries: 300 } },
         },
       ],
     },
-    client: { installPrompt: true },
+    client: { installPrompt: true, periodicSyncForUpdates: 3600 },
     devOptions: { enabled: false },
   },
 })

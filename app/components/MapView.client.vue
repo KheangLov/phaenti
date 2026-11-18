@@ -23,6 +23,7 @@ import { STATUS_COLORS } from '~/utils/db'
 import { categoryOf, type CategoryId } from '~/utils/categories'
 import { ensurePinImages } from '~/utils/pins'
 import { adminCounts } from '~/composables/useAdmin'
+import type { OfflineInfo } from '~/composables/useAppState'
 
 const el = ref<HTMLElement>()
 const loaded = ref(false)
@@ -550,6 +551,7 @@ onMounted(async () => {
   })
 
   mapApi.value = {
+    offlineInfo,
     flyTo,
     fitBounds,
     fitAll,
@@ -562,6 +564,31 @@ onMounted(async () => {
     },
   }
 })
+
+/** Everything needed to save the current basemap for offline use. */
+function offlineInfo(): OfflineInfo | null {
+  if (!map) return null
+  const style = map.getStyle()
+  const sources: OfflineInfo['sources'] = []
+  for (const [id, def] of Object.entries(style.sources)) {
+    if (id === 'admin' || (def.type !== 'vector' && def.type !== 'raster')) continue
+    const src = map.getSource(id) as unknown as { tiles?: string[]; minzoom?: number; maxzoom?: number } | undefined
+    if (src?.tiles?.length) sources.push({ tiles: src.tiles, minzoom: src.minzoom ?? 0, maxzoom: src.maxzoom ?? 14 })
+  }
+  const fonts = new Set<string>()
+  for (const l of style.layers) {
+    const f = (l as { layout?: Record<string, unknown> }).layout?.['text-font']
+    if (Array.isArray(f) && f.every(x => typeof x === 'string')) fonts.add((f as string[]).join(','))
+  }
+  const b = map.getBounds()
+  return {
+    sources,
+    glyphs: typeof style.glyphs === 'string' ? style.glyphs : null,
+    fonts: [...fonts],
+    bounds: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()],
+    zoom: map.getZoom(),
+  }
+}
 
 let geoAbort: AbortController | null = null
 async function startDraft(lng: number, lat: number, source: 'map' | 'location', category: CategoryId = 'other') {

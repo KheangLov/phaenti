@@ -465,7 +465,7 @@ function highlight(text: string) {
   ]
 }
 
-defineExpose({ openSearch })
+defineExpose({ openSearch: () => { openSearch(); input.value?.focus() } })
 </script>
 
 <style scoped>

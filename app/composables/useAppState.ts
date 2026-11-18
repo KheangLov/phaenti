@@ -27,6 +27,15 @@ export interface MapApi {
   fitAll: () => void
   locate: () => Promise<{ lng: number; lat: number } | null>
   pulse: (lng: number, lat: number, color: string) => void
+  offlineInfo: () => OfflineInfo | null
+}
+
+export interface OfflineInfo {
+  sources: { tiles: string[]; minzoom: number; maxzoom: number }[]
+  glyphs: string | null
+  fonts: string[]
+  bounds: [number, number, number, number]
+  zoom: number
 }
 
 const selectedId = ref<string | null>(null)
