@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
+import type { CategoryId } from './categories'
 
 export type PlaceStatus = 'been' | 'planned'
 
@@ -8,6 +9,7 @@ export interface Place {
   lat: number
   lng: number
   status: PlaceStatus
+  category: CategoryId
   address: string
   notes: string
   rating: number // 0 = unrated, 1..5
@@ -25,6 +27,11 @@ export const db = new Dexie('phaenti') as Dexie & {
 db.version(1).stores({
   places: 'id, status, updatedAt, createdAt, name',
 })
+db.version(2).stores({
+  places: 'id, status, category, updatedAt, createdAt, name',
+}).upgrade(tx => tx.table('places').toCollection().modify((p: Place) => {
+  if (!p.category) p.category = 'other'
+}))
 
 export const STATUS_COLORS: Record<PlaceStatus, string> = {
   been: '#10b981',

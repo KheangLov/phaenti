@@ -4,15 +4,7 @@
       <MapView ref="mapView" @moving="moving = $event" />
 
       <!-- Top: search -->
-      <motion.div
-        class="pt-safe absolute inset-x-0 top-0 z-30 px-3"
-        :animate="{ y: picking ? -90 : 0, opacity: picking ? 0 : 1 }"
-        :transition="spring"
-      >
-        <div class="mx-auto max-w-xl">
-          <SearchBar />
-        </div>
-      </motion.div>
+      <SearchOverlay :hidden="picking" />
 
       <!-- Right: map controls -->
       <motion.div
@@ -101,7 +93,7 @@
       <!-- Bottom sheet -->
       <BottomSheet v-model:snap="snap" :hidden="picking" :peek="PEEK">
         <template #header>
-          <div v-if="!draft && !selected" class="px-5 pb-3">
+          <div v-if="!draft && !selected && !area" class="px-5 pb-3">
             <div class="flex items-end justify-between">
               <div>
                 <h2 class="text-xl font-semibold tracking-tight">Your map</h2>
@@ -144,10 +136,24 @@
           >
             <DraftCard v-if="draft" :draft="draft" />
             <PlaceDetail v-else-if="selected" :place="selected" />
-            <PlaceList v-else />
+            <AreaCard v-else-if="area" :area="area" />
+            <PlaceList v-else @credits="creditsOpen = true" />
           </motion.div>
         </AnimatePresence>
       </BottomSheet>
+
+      <UModal v-model:open="creditsOpen" title="Map credits" description="Phaenti is built on open data and open-source software.">
+        <template #body>
+          <ul class="space-y-3 text-sm">
+            <li><b>Map data</b> © <a class="underline" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL)</li>
+            <li><b>Map tiles</b> <a class="underline" href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a>, <a class="underline" href="https://openmaptiles.org" target="_blank" rel="noopener">OpenMapTiles</a></li>
+            <li><b>Cambodia boundaries</b> Open Development Cambodia (2014), via <a class="underline" href="https://www.geoboundaries.org" target="_blank" rel="noopener">geoBoundaries</a>, CC BY 4.0</li>
+            <li><b>Khmer names &amp; villages</b> <a class="underline" href="https://github.com/dwilkie/pumi" target="_blank" rel="noopener">Pumi</a> (MIT)</li>
+            <li><b>Place search</b> <a class="underline" href="https://photon.komoot.io" target="_blank" rel="noopener">Photon by komoot</a></li>
+            <li><b>Map engine</b> <a class="underline" href="https://maplibre.org" target="_blank" rel="noopener">MapLibre GL JS</a></li>
+          </ul>
+        </template>
+      </UModal>
 
       <input ref="fileInput" type="file" accept=".json,.geojson,application/json,application/geo+json" class="hidden" @change="onImport">
     </main>
@@ -163,7 +169,8 @@ const PEEK = 156
 const spring = { type: 'spring', stiffness: 420, damping: 38 } as const
 
 const { places, toExport, importFile } = usePlaces()
-const { selectedId, draft, picking, filter, snap, mapApi, closeAll } = useAppState()
+const { selectedId, draft, area, picking, searching, filter, snap, mapApi, closeAll, showBoundaries, showExplored } = useAppState()
+const creditsOpen = ref(false)
 const colorMode = useColorMode()
 const toast = useToast()
 const { $pwa } = useNuxtApp()
@@ -174,8 +181,8 @@ const locating = ref(false)
 const fileInput = ref<HTMLInputElement>()
 
 const selected = computed(() => places.value.find(p => p.id === selectedId.value) ?? null)
-const contentKey = computed(() => (draft.value ? `d${draft.value.lat},${draft.value.lng}` : selected.value ? `p${selected.value.id}` : 'list'))
-const showFab = computed(() => !picking.value && !draft.value && !selected.value && snap.value === 'peek')
+const contentKey = computed(() => (draft.value ? `d${draft.value.lat},${draft.value.lng}` : selected.value ? `p${selected.value.id}` : area.value ? `a${area.value.code}${area.value.village?.code ?? ''}` : 'list'))
+const showFab = computed(() => !picking.value && !draft.value && !selected.value && !area.value && !searching.value && snap.value === 'peek')
 
 const counts = computed(() => {
   let been = 0
@@ -258,12 +265,32 @@ const menu = computed<DropdownMenuItem[][]>(() => [
     { label: 'Restore from file', icon: 'i-lucide-upload', onSelect: () => fileInput.value?.click() },
   ],
   [
+    { type: 'label', label: 'Cambodia layers' },
+    {
+      label: 'Boundaries',
+      icon: 'i-lucide-square-dashed',
+      type: 'checkbox',
+      checked: showBoundaries.value,
+      onUpdateChecked: (v: boolean) => (showBoundaries.value = v),
+      onSelect: (e: Event) => e.preventDefault(),
+    },
+    {
+      label: 'Explored areas',
+      icon: 'i-lucide-sparkles',
+      type: 'checkbox',
+      checked: showExplored.value,
+      onUpdateChecked: (v: boolean) => (showExplored.value = v),
+      onSelect: (e: Event) => e.preventDefault(),
+    },
+  ],
+  [
     {
       label: colorMode.value === 'dark' ? 'Light map' : 'Dark map',
       icon: colorMode.value === 'dark' ? 'i-lucide-sun' : 'i-lucide-moon',
       onSelect: () => (colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'),
     },
     { label: 'Add my current location', icon: 'i-lucide-map-pin-plus', onSelect: addHere },
+    { label: 'Map credits', icon: 'i-lucide-info', onSelect: () => (creditsOpen.value = true) },
   ],
 ])
 
@@ -280,7 +307,7 @@ onMounted(() => {
   window.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return
     if (picking.value) picking.value = false
-    else if (draft.value || selectedId.value) closeAll()
+    else if (draft.value || selectedId.value || area.value) closeAll()
   })
 })
 

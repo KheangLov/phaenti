@@ -1,6 +1,15 @@
 <template>
   <div class="px-5 pt-1 pb-6">
     <div class="flex items-start gap-3">
+      <motion.img
+        :key="`${place.category}-${place.status}`"
+        :src="pinDataUrl(place.category, place.status)"
+        alt=""
+        class="-mt-1 h-13 w-11 shrink-0"
+        :initial="{ y: -12, scale: 0.7, opacity: 0 }"
+        :animate="{ y: 0, scale: 1, opacity: 1 }"
+        :transition="{ type: 'spring', stiffness: 520, damping: 18 }"
+      />
       <div class="min-w-0 flex-1">
         <input
           :value="place.name"
@@ -9,12 +18,26 @@
           @change="save({ name: ($event.target as HTMLInputElement).value.trim() || place.name })"
         >
         <p class="mt-0.5 truncate text-sm text-(--ui-text-muted)">{{ place.address || formatCoords(place.lat, place.lng) }}</p>
+        <div v-if="areas.length" class="mt-1.5 flex flex-wrap gap-1">
+          <button
+            v-for="a in areas"
+            :key="a.code"
+            class="inline-flex items-center gap-1 rounded-full bg-(--ui-bg-elevated) px-2 py-0.5 text-[11px] font-medium text-(--ui-text-muted) active:scale-95 transition"
+            @click="goArea(a.code)"
+          >
+            {{ a.name }}
+            <UIcon name="i-lucide-chevron-right" class="size-3" />
+          </button>
+        </div>
       </div>
       <UButton icon="i-lucide-x" color="neutral" variant="soft" class="rounded-full" aria-label="Close" @click="select(null)" />
     </div>
 
     <div class="mt-4">
       <StatusToggle :model-value="place.status" @update:model-value="setStatus" />
+    </div>
+    <div class="mt-3">
+      <CategoryPicker :model-value="place.category" @update:model-value="setCategory" />
     </div>
 
     <!-- Quick actions -->
@@ -113,10 +136,30 @@
 import { motion } from 'motion-v'
 import { watchDebounced } from '@vueuse/core'
 import { STATUS_COLORS, type Place, type PlaceStatus } from '~/utils/db'
+import { categoryOf, type CategoryId } from '~/utils/categories'
+import { pinDataUrl } from '~/utils/pins'
+import { placeAdmin } from '~/composables/useAdmin'
 
 const props = defineProps<{ place: Place }>()
 const { update, remove, restore } = usePlaces()
-const { select, mapApi: mapApiRef } = useAppState()
+const { select, openArea, mapApi: mapApiRef } = useAppState()
+const admin = useAdmin()
+
+const areas = computed(() => {
+  const a = placeAdmin.value.get(props.place.id)
+  if (!a) return []
+  return [a.c, a.d, a.p].map(c => admin.area(c)).filter((x): x is NonNullable<typeof x> => !!x)
+})
+function goArea(code: string) {
+  openArea({ code })
+  const a = admin.area(code)
+  if (a?.bbox) mapApiRef.value?.fitBounds(a.bbox)
+}
+function setCategory(category: CategoryId) {
+  if (category === props.place.category) return
+  save({ category })
+  mapApiRef.value?.pulse(props.place.lng, props.place.lat, categoryOf(category).color)
+}
 const mapApi = computed(() => mapApiRef.value)
 const toast = useToast()
 

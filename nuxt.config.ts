@@ -9,7 +9,12 @@ export default defineNuxtConfig({
   ui: { fonts: false },
   icon: {
     provider: 'none',
-    clientBundle: { scan: true, sizeLimitKb: 64 },
+    clientBundle: {
+      scan: true,
+      sizeLimitKb: 96,
+      // Icons referenced dynamically (categories)
+      icons: ['utensils', 'coffee', 'wine', 'landmark', 'trees', 'umbrella', 'mountain', 'bed-double', 'shopping-bag', 'palette', 'plane', 'map-pin', 'map', 'building-2', 'home', 'flag', 'history', 'link', 'navigation', 'search', 'x', 'chevron-right', 'arrow-up-left'].map(i => `lucide:${i}`),
+    },
   },
   colorMode: { preference: 'system', fallback: 'light' },
 
@@ -76,6 +81,12 @@ export default defineNuxtConfig({
             expiration: { maxEntries: 4000, maxAgeSeconds: 60 * 60 * 24 * 45 },
             cacheableResponse: { statuses: [0, 200] },
           },
+        },
+        {
+          // Cambodia boundary tiles and lookup data (static, same origin)
+          urlPattern: ({ url }: { url: URL }) => url.pathname.startsWith('/admin/'),
+          handler: 'CacheFirst',
+          options: { cacheName: 'admin-data', expiration: { maxEntries: 1200 }, cacheableResponse: { statuses: [0, 200] } },
         },
         {
           urlPattern: /^https:\/\/photon\.komoot\.io\/.*/,

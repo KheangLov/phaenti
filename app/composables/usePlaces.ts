@@ -1,5 +1,6 @@
 import { liveQuery } from 'dexie'
 import type { Place, PlaceStatus } from '~/utils/db'
+import { CATEGORY_MAP, type CategoryId } from '~/utils/categories'
 import { db } from '~/utils/db'
 
 // One live subscription shared by every component.
@@ -35,6 +36,7 @@ export interface NewPlace {
   lat: number
   lng: number
   status: PlaceStatus
+  category?: CategoryId
   address?: string
   source?: Place['source']
 }
@@ -57,6 +59,7 @@ export function usePlaces() {
       lat: +p.lat.toFixed(6),
       lng: +p.lng.toFixed(6),
       status: p.status,
+      category: p.category ?? 'other',
       address: p.address ?? '',
       notes: '',
       rating: 0,
@@ -136,6 +139,7 @@ function normalize(r: any): Place | null {
     lat,
     lng,
     status: r.status === 'been' ? 'been' : 'planned',
+    category: r.category in CATEGORY_MAP ? r.category : 'other',
     address: String(r.address ?? ''),
     notes: String(r.notes ?? ''),
     rating: Math.max(0, Math.min(5, Number(r.rating) || 0)),

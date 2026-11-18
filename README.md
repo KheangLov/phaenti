@@ -35,6 +35,24 @@ shown network address from a phone on the same Wi-Fi.
 - Backup to a JSON file and restore (merges by id, newest edit wins); also imports GeoJSON
 - PWA: installable, app shell and viewed map tiles cached for offline use
 
+## Cambodia layers
+
+- Province, district and commune boundaries as static vector tiles (`public/admin/tiles`, z4–z11, ~2 MB, cached offline)
+- Tap an area to see its Khmer and Latin name, parents, your places there, and how many of its districts/communes you've explored
+- "Cambodia explored" progress: provinces, districts and communes where you have a "been" place, tinted green on the map
+- Search all 25 provinces, 197 districts, 1,633 communes and 14,578 villages in Latin or Khmer, offline
+- Villages have no public boundary data; selecting one highlights its commune and can look the village up on OpenStreetMap
+
+Rebuild the data (needs Python with `shapely` + `pyyaml`, and Node):
+
+```bash
+python3 scripts/build_admin.py <data dir> <out dir>   # geoBoundaries KHM ADM1-3 + Pumi YAML in <data dir>
+node scripts/build_tiles.mjs <out dir> public/admin/tiles
+```
+
+Sources: boundaries from Open Development Cambodia (2014) via geoBoundaries, CC BY 4.0;
+codes, Khmer names and villages from [Pumi](https://github.com/dwilkie/pumi) (MIT).
+
 ## Layout
 
 ```
