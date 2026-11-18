@@ -1,0 +1,62 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --color-been: #10b981;
+  --color-planned: #8b5cf6;
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+html, body, #__nuxt {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  background: var(--ui-bg);
+}
+
+/* Frosted panels floating over the map */
+.glass {
+  background: color-mix(in oklab, var(--ui-bg) 80%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  backdrop-filter: blur(16px) saturate(1.6);
+  border: 1px solid color-mix(in oklab, var(--ui-border) 75%, transparent);
+}
+
+.shadow-float {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px -6px rgb(0 0 0 / 0.18);
+}
+
+.shadow-sheet {
+  box-shadow: 0 -1px 0 rgb(0 0 0 / 0.04), 0 -12px 40px -12px rgb(0 0 0 / 0.28);
+}
+
+.pt-safe { padding-top: max(env(safe-area-inset-top), 12px); }
+.pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 12px); }
+
+/* Off-screen list rows skip layout and paint */
+.cv-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 64px;
+}
+
+/* MapLibre controls: keep attribution readable but out of the way */
+.maplibregl-ctrl-top-left { top: calc(max(env(safe-area-inset-top), 12px) + 64px); }
+.maplibregl-ctrl-attrib.maplibregl-compact { background: color-mix(in oklab, var(--ui-bg) 85%, transparent); }
+.maplibregl-canvas { outline: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
