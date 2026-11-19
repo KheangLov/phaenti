@@ -64,6 +64,7 @@
 <script setup lang="ts">
 import { motion } from 'motion-v'
 import { MAP_STYLES, AUTO_STYLE, styleById, type Swatch } from '~/utils/mapStyles'
+import { WHITE } from '~/utils/colors'
 
 const open = defineModel<boolean>('open', { default: false })
 const { styleChoice, showBoundaries, showExplored } = useAppState()
@@ -86,7 +87,7 @@ function choose(id: string) {
 function thumb(c: Swatch, extrude: boolean) {
   const blocks = extrude
     ? [[22, 52, 14, 18], [40, 58, 10, 26], [84, 18, 12, 22], [98, 30, 9, 14]].map(([x, y, w, h]) =>
-        `<path d="M${x} ${y}l${w} -5v-${h}l-${w} 5Z" fill="${c.building}" opacity=".95"/><path d="M${x} ${y}v-${h}l-6 -3v${h}Z" fill="${c.building}" opacity=".7"/><path d="M${x} ${y - h}l${w} -5l-6 -3l-${w} 5Z" fill="#fff" opacity=".45"/>`).join('')
+        `<path d="M${x} ${y}l${w} -5v-${h}l-${w} 5Z" fill="${c.building}" opacity=".95"/><path d="M${x} ${y}v-${h}l-6 -3v${h}Z" fill="${c.building}" opacity=".7"/><path d="M${x} ${y - h}l${w} -5l-6 -3l-${w} 5Z" fill="${WHITE}" opacity=".45"/>`).join('')
     : [[18, 50, 12, 9], [34, 54, 9, 8], [86, 14, 11, 9], [100, 26, 10, 8], [70, 64, 10, 9]].map(([x, y, w, h]) =>
         `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="1.5" fill="${c.building}"/>`).join('')
   return `
@@ -97,7 +98,7 @@ function thumb(c: Swatch, extrude: boolean) {
     <path d="M0 30L120 22M54 -5L60 95M8 88L44 -5" stroke="${c.road}" stroke-width="2.6" fill="none"/>
     ${blocks}
     <path d="M-5 50C30 44 60 46 125 34" stroke="${c.roadMajor}" stroke-width="4.5" fill="none" stroke-linecap="round"/>
-    <circle cx="66" cy="40" r="5.5" fill="#10b981" stroke="#fff" stroke-width="2"/>
+    <circle cx="66" cy="40" r="5.5" fill="#10b981" stroke="${WHITE}" stroke-width="2"/>
   `
 }
 </script>

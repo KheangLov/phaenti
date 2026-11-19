@@ -3,6 +3,7 @@
 //  - recolor: OpenFreeMap Liberty data repainted with a Phaenti palette
 //  - 3D:      Liberty plus extruded buildings and tilt
 import type { StyleSpecification, LayerSpecification } from 'maplibre-gl'
+import { WHITE } from './colors'
 
 export interface Palette {
   land: string
@@ -55,19 +56,19 @@ const MEKONG_NIGHT: Palette = {
 }
 const RICE_PADDY: Palette = {
   land: '#eef4dc', water: '#8fcac6', waterLine: '#6db5b0', park: '#bfdc8e', forest: '#a8cf7a', sand: '#efe6c2',
-  urban: '#e3e9cf', building: '#d9e1c2', road: '#ffffff', roadMajor: '#e8a63e', casing: '#c9d4ab', rail: '#9aa77d',
+  urban: '#e3e9cf', building: '#d9e1c2', road: WHITE, roadMajor: '#e8a63e', casing: '#c9d4ab', rail: '#9aa77d',
   boundary: '#6b7d45', label: '#33421f', labelMinor: '#56663a', waterLabel: '#2e7672', halo: '#f7faee', pois: true,
 }
 
 export const MAP_STYLES: MapStyleDef[] = [
   { id: 'liberty', label: 'Liberty', tag: 'Classic', dark: false, url: `${OFM}/liberty`, credit: OFM_CREDIT,
-    swatch: { land: '#f8f4f0', water: '#a0c8f0', park: '#d8e8c8', road: '#ffffff', roadMajor: '#fcd6a4', building: '#e5ddd3' } },
+    swatch: { land: '#f8f4f0', water: '#a0c8f0', park: '#d8e8c8', road: WHITE, roadMajor: '#fcd6a4', building: '#e5ddd3' } },
   { id: 'positron', label: 'Positron', tag: 'Minimal', dark: false, url: `${OFM}/positron`, credit: OFM_CREDIT,
-    swatch: { land: '#f2f3f0', water: '#c2c8ca', park: '#e5e9df', road: '#ffffff', roadMajor: '#e3e3e3', building: '#e7e7e4' } },
+    swatch: { land: '#f2f3f0', water: '#c2c8ca', park: '#e5e9df', road: WHITE, roadMajor: '#e3e3e3', building: '#e7e7e4' } },
   { id: 'bright', label: 'Bright', tag: 'Detailed', dark: false, url: `${OFM}/bright`, credit: OFM_CREDIT,
-    swatch: { land: '#f8f4f0', water: '#a0c8f0', park: '#c8df9f', road: '#ffffff', roadMajor: '#ffcc88', building: '#e9dfd3' } },
+    swatch: { land: '#f8f4f0', water: '#a0c8f0', park: '#c8df9f', road: WHITE, roadMajor: '#ffcc88', building: '#e9dfd3' } },
   { id: '3d', label: '3D City', tag: '3D', dark: false, url: `${OFM}/liberty`, extrude: true, credit: OFM_CREDIT,
-    swatch: { land: '#f8f4f0', water: '#a0c8f0', park: '#d8e8c8', road: '#ffffff', roadMajor: '#fcd6a4', building: '#cbbfb0' } },
+    swatch: { land: '#f8f4f0', water: '#a0c8f0', park: '#d8e8c8', road: WHITE, roadMajor: '#fcd6a4', building: '#cbbfb0' } },
   { id: 'angkor', label: 'Angkor', tag: 'Phaenti', dark: false, url: `${OFM}/liberty`, palette: ANGKOR, credit: OFM_CREDIT,
     swatch: { land: ANGKOR.land, water: ANGKOR.water, park: ANGKOR.park, road: ANGKOR.road, roadMajor: ANGKOR.roadMajor, building: ANGKOR.building } },
   { id: 'mekong-night', label: 'Mekong Night', tag: 'Phaenti', dark: true, url: `${OFM}/liberty`, palette: MEKONG_NIGHT, credit: OFM_CREDIT,
@@ -79,9 +80,9 @@ export const MAP_STYLES: MapStyleDef[] = [
   { id: 'fiord', label: 'Fiord', tag: 'Blue', dark: true, url: `${OFM}/fiord`, credit: OFM_CREDIT,
     swatch: { land: '#45516e', water: '#38435c', park: '#4b5a6e', road: '#5b6b8a', roadMajor: '#7d8fb3', building: '#3f4a63' } },
   { id: 'vt-colorful', label: 'Colorful', tag: 'VersaTiles', dark: false, url: '/styles/versatiles-colorful.json', credit: VT_CREDIT,
-    swatch: { land: '#f8f4f0', water: '#bfd9f2', park: '#d9eec5', road: '#ffffff', roadMajor: '#ffcc88', building: '#f2e3d6' } },
+    swatch: { land: '#f8f4f0', water: '#bfd9f2', park: '#d9eec5', road: WHITE, roadMajor: '#ffcc88', building: '#f2e3d6' } },
   { id: 'vt-natural', label: 'Natural', tag: 'VersaTiles', dark: false, url: '/styles/versatiles-natural.json', credit: VT_CREDIT,
-    swatch: { land: '#f2edde', water: '#a6cbed', park: '#cfe0b0', road: '#ffffff', roadMajor: '#e8c48a', building: '#e6dccb' } },
+    swatch: { land: '#f2edde', water: '#a6cbed', park: '#cfe0b0', road: WHITE, roadMajor: '#e8c48a', building: '#e6dccb' } },
 ]
 
 export const AUTO_STYLE = 'auto'

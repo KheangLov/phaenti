@@ -21,6 +21,7 @@
 import type { Map as MLMap, GeoJSONSource, MapMouseEvent, MapTouchEvent, ExpressionSpecification, StyleSpecification } from 'maplibre-gl'
 import { AUTO_STYLE, styleById, recolor, fontsOf, type MapStyleDef } from '~/utils/mapStyles'
 import { STATUS_COLORS } from '~/utils/db'
+import { WHITE, whiteA } from '~/utils/colors'
 import { categoryOf, type CategoryId } from '~/utils/categories'
 import { ensurePinImages } from '~/utils/pins'
 import { adminCounts } from '~/composables/useAdmin'
@@ -170,7 +171,7 @@ function addAdminLayers() {
     id: 'line-province-glow', type: 'line', source: 'admin', 'source-layer': 'province',
     layout: { 'line-join': 'round' },
     paint: {
-      'line-color': dark ? '#0f172a' : '#ffffff',
+      'line-color': dark ? '#0f172a' : WHITE,
       'line-opacity': 0.7,
       'line-width': ['interpolate', ['linear'], ['zoom'], 4, 2, 10, 5],
     },
@@ -199,7 +200,7 @@ function addAdminLayers() {
   }
 
   // Area labels (English; Khmer names show in the panel — map text can't shape Khmer)
-  const halo = dark ? 'rgba(9,9,11,0.85)' : 'rgba(255,255,255,0.9)'
+  const halo = dark ? 'rgba(9,9,11,0.85)' : whiteA(0.9)
   map.addLayer({
     id: 'label-province', type: 'symbol', source: 'admin', 'source-layer': 'label_province', minzoom: 5, maxzoom: 8.5,
     layout: {
@@ -231,7 +232,7 @@ function addPlaceLayers() {
   const been = STATUS_COLORS.been
   const planned = STATUS_COLORS.planned
   const label = isDark.value ? '#f4f4f5' : '#18181b'
-  const halo = isDark.value ? '#09090b' : '#ffffff'
+  const halo = isDark.value ? '#09090b' : WHITE
 
   map.addSource('places', {
     type: 'geojson',
@@ -258,13 +259,13 @@ function addPlaceLayers() {
       'circle-color': ['interpolate', ['linear'], ['/', ['get', 'been'], ['get', 'point_count']], 0, planned, 1, been],
       'circle-radius': ['step', ['get', 'point_count'], 16, 10, 19, 50, 23, 200, 28],
       'circle-stroke-width': 2.5,
-      'circle-stroke-color': '#ffffff',
+      'circle-stroke-color': WHITE,
     },
   })
   map.addLayer({
     id: 'cluster-count', type: 'symbol', source: 'places', filter: ['has', 'point_count'],
     layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': fonts.bold, 'text-size': 13, 'text-allow-overlap': true },
-    paint: { 'text-color': '#ffffff' },
+    paint: { 'text-color': WHITE },
   })
 
   // Selection glow under the pin
@@ -306,7 +307,7 @@ function addPlaceLayers() {
   // Draft (unsaved) pin: ghost of the category pin
   map.addLayer({
     id: 'draft-dot', type: 'circle', source: 'draft',
-    paint: { 'circle-radius': 5, 'circle-color': isDark.value ? '#fafafa' : '#18181b', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' },
+    paint: { 'circle-radius': 5, 'circle-color': isDark.value ? '#fafafa' : '#18181b', 'circle-stroke-width': 2, 'circle-stroke-color': WHITE },
   })
   map.addLayer({
     id: 'draft-pin', type: 'symbol', source: 'draft',
@@ -319,7 +320,7 @@ function addPlaceLayers() {
 
   // My location
   map.addLayer({ id: 'me-halo', type: 'circle', source: 'me', paint: { 'circle-radius': 22, 'circle-color': '#3b82f6', 'circle-opacity': 0.16 } })
-  map.addLayer({ id: 'me-dot', type: 'circle', source: 'me', paint: { 'circle-radius': 7, 'circle-color': '#3b82f6', 'circle-stroke-width': 3, 'circle-stroke-color': '#ffffff' } })
+  map.addLayer({ id: 'me-dot', type: 'circle', source: 'me', paint: { 'circle-radius': 7, 'circle-color': '#3b82f6', 'circle-stroke-width': 3, 'circle-stroke-color': WHITE } })
 }
 
 function pinSize(selected: string | null): ExpressionSpecification {

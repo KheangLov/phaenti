@@ -4,6 +4,7 @@ import type { Map as MLMap } from 'maplibre-gl'
 import { CATEGORIES, type Category } from './categories'
 import { ICON_BODIES } from './iconBodies'
 import { STATUS_COLORS, type PlaceStatus } from './db'
+import { WHITE } from './colors'
 
 const W = 44 // logical px
 const H = 54
@@ -15,9 +16,9 @@ function pinSvg(c: Category, status: PlaceStatus) {
   const badge = planned ? ICON_BODIES.heart : ICON_BODIES.check
   const badgeColor = STATUS_COLORS[status]
   // Teardrop pin: filled gradient for "been", white with coloured ring for "want to go"
-  const fill = planned ? '#ffffff' : `url(#g)`
-  const iconColor = planned ? c.color : '#ffffff'
-  const stroke = planned ? c.color : '#ffffff'
+  const fill = planned ? WHITE : `url(#g)`
+  const iconColor = planned ? c.color : WHITE
+  const stroke = planned ? c.color : WHITE
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W * RATIO}" height="${H * RATIO}" viewBox="0 0 ${W} ${H}">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c.color}"/><stop offset="1" stop-color="${c.color2}"/></linearGradient>
@@ -26,8 +27,8 @@ function pinSvg(c: Category, status: PlaceStatus) {
   <ellipse cx="20" cy="51.2" rx="5.5" ry="1.8" fill="#000" opacity="0.22"/>
   <path filter="url(#s)" d="M20 3C11.2 3 4.5 9.7 4.5 18.3c0 10.4 12.2 23.4 14.4 25.7a1.5 1.5 0 0 0 2.2 0c2.2-2.3 14.4-15.3 14.4-25.7C35.5 9.7 28.8 3 20 3Z" fill="${fill}" stroke="${stroke}" stroke-width="${planned ? 2.6 : 2.2}"/>
   <g transform="translate(11.6 9.9) scale(0.7)" color="${iconColor}">${body}</g>
-  <circle cx="33.5" cy="8.5" r="7" fill="${badgeColor}" stroke="#fff" stroke-width="2"/>
-  <g transform="translate(29.3 4.3) scale(0.35)" color="#fff">${badge.replace(/stroke-width="2"/g, 'stroke-width="3.4"')}</g>
+  <circle cx="33.5" cy="8.5" r="7" fill="${badgeColor}" stroke="${WHITE}" stroke-width="2"/>
+  <g transform="translate(29.3 4.3) scale(0.35)" color="${WHITE}">${badge.replace(/stroke-width="2"/g, 'stroke-width="3.4"')}</g>
 </svg>`
 }
 

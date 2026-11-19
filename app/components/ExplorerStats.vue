@@ -7,7 +7,7 @@
     :transition="{ duration: 0.35 }"
   >
     <!-- decorative contour lines -->
-    <svg class="pointer-events-none absolute -right-6 -top-6 size-40 opacity-20" viewBox="0 0 100 100" fill="none" stroke="white" stroke-width="0.8">
+    <svg class="pointer-events-none absolute -right-6 -top-6 size-40 stroke-white opacity-20" viewBox="0 0 100 100" fill="none" stroke-width="0.8">
       <circle cx="70" cy="30" r="12" /><circle cx="70" cy="30" r="20" /><circle cx="70" cy="30" r="28" /><circle cx="70" cy="30" r="36" /><circle cx="70" cy="30" r="44" />
     </svg>
 

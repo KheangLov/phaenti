@@ -83,8 +83,8 @@
                     <stop offset="1" stop-color="#8b5cf6" />
                   </linearGradient>
                 </defs>
-                <path d="M22 2C11 2 3 10.4 3 21c0 13.6 15.4 29.3 18 32a1.4 1.4 0 0 0 2 0c2.6-2.7 18-18.4 18-32C41 10.4 33 2 22 2Z" fill="url(#pinG)" stroke="white" stroke-width="3" />
-                <circle cx="22" cy="21" r="6.5" fill="white" />
+                <path d="M22 2C11 2 3 10.4 3 21c0 13.6 15.4 29.3 18 32a1.4 1.4 0 0 0 2 0c2.6-2.7 18-18.4 18-32C41 10.4 33 2 22 2Z" fill="url(#pinG)" class="stroke-white" stroke-width="3" />
+                <circle cx="22" cy="21" r="6.5" class="fill-white" />
               </svg>
             </motion.div>
           </div>
