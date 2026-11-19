@@ -12,10 +12,14 @@
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-:root, .light {
-  /* Nuxt UI hardcodes #fff here; use the app's soft white instead */
+/* Nuxt UI hardcodes #fff; use the app's soft white instead.
+   Light only: in dark mode these must stay dark. */
+:root:not(.dark), .light {
   --ui-bg: var(--color-white);
   --ui-text-inverted: var(--color-white);
+}
+.dark {
+  --ui-text-highlighted: var(--color-white);
 }
 
 html, body, #__nuxt {
