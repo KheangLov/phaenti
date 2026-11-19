@@ -26,7 +26,7 @@ import { categoryOf, type CategoryId } from '~/utils/categories'
 import { ensurePinImages } from '~/utils/pins'
 import { adminCounts } from '~/composables/useAdmin'
 import type { OfflineInfo } from '~/composables/useAppState'
-import { HIDDEN_GEO_URL, HIDDEN_NAME_PARTS } from '~/composables/useHidden'
+import { HIDDEN_GEO_URL, HIDDEN_LABELS_URL, HIDDEN_NAME_PARTS } from '~/composables/useHidden'
 
 const el = ref<HTMLElement>()
 const loaded = ref(false)
@@ -92,6 +92,8 @@ async function addLayers() {
   await ensurePinImages(map)
   if (!map || map.getSource('places')) return
   fonts = fontsOf(map.getStyle())
+  await loadLabelArea()
+  if (!map || map.getSource('places')) return
   hideCountries()
   apply3D()
   addAdminLayers()
@@ -120,17 +122,36 @@ function isExpressionFilter(f: unknown): boolean {
   }
 }
 
+let labelArea: GeoJSON.MultiPolygon | null = null
+let convertFilter: ((f: unknown) => unknown) | null = null
+async function loadLabelArea() {
+  // Loaded lazily alongside the map so the app's first screen stays small
+  convertFilter ??= (await import('@maplibre/maplibre-gl-style-spec/dist/feature_filter/convert.mjs')).convertFilter as (f: unknown) => unknown
+  if (labelArea) return
+  try { labelArea = await (await fetch(HIDDEN_LABELS_URL)).json() } catch { /* offline before first cache */ }
+}
+
 function hideCountries() {
   if (!map || map.getSource('hidden')) return
   const style = map.getStyle()
-  // 1. Drop basemap labels that name the hidden country ("Thailand", "Gulf of Thailand", "ไทย"…)
+  // 1. Remove basemap labels that sit inside the hidden country, or that name it
+  //    ("Thailand", "Gulf of Thailand", "ไทย"…). Done with filters, so no letters
+  //    are left peeking out across the border.
   const fields = ['name', 'name_en', 'name:en', 'name:latin', 'name_int', 'name:nonlatin']
-  const named: ExpressionSpecification = ['any', ...fields.flatMap(k => HIDDEN_NAME_PARTS.map(p => ['in', p, ['to-string', ['get', k]]] as ExpressionSpecification))]
+  const hiddenLabel: ExpressionSpecification = ['any',
+    ...fields.flatMap(k => HIDDEN_NAME_PARTS.map(p => ['in', p, ['to-string', ['get', k]]] as ExpressionSpecification)),
+    ...(labelArea ? [['within', labelArea] as unknown as ExpressionSpecification] : []),
+  ]
   for (const l of style.layers) {
     if (l.type !== 'symbol') continue
     const f = (l as { filter?: unknown }).filter
-    if (f === undefined) map.setFilter(l.id, ['!', named])
-    else if (isExpressionFilter(f)) map.setFilter(l.id, ['all', f as ExpressionSpecification, ['!', named]])
+    let base: ExpressionSpecification | boolean = true
+    try {
+      base = f === undefined ? true : isExpressionFilter(f) ? (f as ExpressionSpecification) : (convertFilter!(f) as ExpressionSpecification)
+    } catch { continue }
+    try {
+      map.setFilter(l.id, base === true ? ['!', hiddenLabel] : ['all', base as ExpressionSpecification, ['!', hiddenLabel]])
+    } catch { /* keep the layer's own filter if MapLibre rejects the combination */ }
   }
   // 2. Turn the country into sea: fill its land with the style's own water colour,
   //    above every basemap layer, so it blends into the surrounding water.

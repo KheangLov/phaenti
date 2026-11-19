@@ -6,6 +6,8 @@ type Ring = [number, number][]
 type Poly = Ring[]
 
 export const HIDDEN_GEO_URL = '/geo/hidden-th.json'
+/** Lighter outline used to remove map labels inside the hidden country */
+export const HIDDEN_LABELS_URL = '/geo/hidden-th-labels.json'
 export const HIDDEN_COUNTRY_CODES = ['TH']
 /** Label text that marks a feature as belonging to a hidden country */
 export const HIDDEN_NAME_PARTS = ['Thailand', 'ไทย', 'Siam']
