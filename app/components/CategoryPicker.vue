@@ -1,5 +1,5 @@
 <template>
-  <div class="-mx-5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+  <div class="-mx-5 overflow-x-auto overscroll-x-contain px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
     <div class="flex w-max gap-1.5 pb-1" role="radiogroup" aria-label="Category">
       <button
         v-for="c in CATEGORIES"

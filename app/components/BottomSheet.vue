@@ -22,7 +22,7 @@
         ref="body"
         class="min-h-0 flex-1 overscroll-contain pb-safe"
         @focusin="onFocusIn"
-        :class="snap === 'peek' ? 'overflow-hidden' : 'overflow-y-auto'"
+        :class="snap === 'peek' ? 'overflow-hidden' : 'overflow-x-hidden overflow-y-auto'"
       >
         <slot />
       </div>

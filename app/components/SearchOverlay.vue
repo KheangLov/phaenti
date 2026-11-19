@@ -86,7 +86,7 @@
         <motion.div
           v-if="open"
           key="panel"
-          class="mx-auto mt-2 w-full max-w-xl min-h-0 flex-1 overflow-y-auto overscroll-contain pb-safe [scrollbar-width:none]"
+          class="mx-auto mt-2 w-full max-w-xl min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pb-safe [scrollbar-width:none]"
           :initial="{ opacity: 0, y: -10 }"
           :animate="{ opacity: 1, y: 0 }"
           :exit="{ opacity: 0, y: -10 }"
@@ -100,7 +100,7 @@
             </section>
             <section>
               <h3 class="section">{{ t('search.nearby') }}</h3>
-              <div class="-mx-3 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div class="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <div class="grid w-max grid-flow-col grid-rows-2 gap-2">
                   <motion.button
                     v-for="(c, i) in QUICK_SEARCHES"
@@ -120,13 +120,13 @@
               </div>
             </section>
 
-            <section v-if="recents.length" class="mt-5">
+            <section v-if="visibleRecents.length" class="mt-5">
               <div class="flex items-center justify-between">
                 <h3 class="section">{{ t('search.recent') }}</h3>
                 <button class="px-1 text-xs font-medium text-(--ui-text-muted)" @click="clearRecents">{{ t('search.clearRecent') }}</button>
               </div>
               <div class="card">
-                <button v-for="(r, i) in recents" :key="i" class="row" @click="runRecent(r)">
+                <button v-for="(r, i) in visibleRecents" :key="i" class="row" @click="runRecent(r)">
                   <span class="icon bg-(--ui-bg-elevated) text-(--ui-text-muted)"><UIcon name="i-lucide-history" class="size-4.5" /></span>
                   <span class="min-w-0 flex-1">
                     <span class="block truncate text-[15px] font-medium">{{ isKm && r.km ? r.km : r.title }}</span>
@@ -219,7 +219,7 @@ import type { GeoResult } from '~/composables/useGeocode'
 import { QUICK_SEARCHES, categoryOf, isPersonal, type CategoryId } from '~/utils/categories'
 import { pinDataUrl } from '~/utils/pins'
 import { adminCounts } from '~/composables/useAdmin'
-import { isBlockedText } from '~/composables/useHidden'
+import { isBlockedText, isHiddenPoint } from '~/composables/useHidden'
 
 defineProps<{ hidden?: boolean }>()
 const { places } = usePlaces()
@@ -260,11 +260,19 @@ const provinces = computed(() => {
 interface Recent { kind: 'geo' | 'place' | 'area' | 'village' | 'coords'; title: string; subtitle?: string; subKm?: string; lat?: number; lng?: number; code?: string; km?: string; category?: CategoryId; id?: string }
 const RKEY = 'phaenti:recent'
 const recents = ref<Recent[]>([])
-try { recents.value = JSON.parse(localStorage.getItem(RKEY) || '[]') } catch { /* ignore */ }
+try {
+  recents.value = (JSON.parse(localStorage.getItem(RKEY) || '[]') as Recent[]).filter(r => !isBlockedRecent(r))
+  localStorage.setItem(RKEY, JSON.stringify(recents.value))
+} catch { /* ignore */ }
+function isBlockedRecent(r: Recent) {
+  return isBlockedText(r.title) || isBlockedText(r.subtitle) || (r.lat != null && r.lng != null && isHiddenPoint(r.lat, r.lng))
+}
 function remember(r: Recent) {
   recents.value = [r, ...recents.value.filter(x => !(x.title === r.title && x.kind === r.kind))].slice(0, 8)
   try { localStorage.setItem(RKEY, JSON.stringify(recents.value)) } catch { /* ignore */ }
 }
+// Re-checked on render too: the country outline loads a moment after start
+const visibleRecents = computed(() => recents.value.filter(r => !isBlockedRecent(r)))
 function clearRecents() {
   recents.value = []
   try { localStorage.removeItem(RKEY) } catch { /* ignore */ }

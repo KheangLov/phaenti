@@ -77,7 +77,7 @@
     <!-- Or save as one of your own places -->
     <div class="mt-4 flex items-center gap-2">
       <span class="shrink-0 text-xs font-medium text-(--ui-text-dimmed)">{{ t('personal.orSaveAs') }}</span>
-      <div class="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
+      <div class="flex min-w-0 flex-1 gap-1.5 overflow-x-auto overscroll-x-contain [scrollbar-width:none]">
         <button
           v-for="c in PERSONAL"
           :key="c.id"
