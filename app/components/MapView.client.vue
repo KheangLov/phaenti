@@ -22,7 +22,7 @@ import type { Map as MLMap, GeoJSONSource, MapMouseEvent, MapTouchEvent, Express
 import { AUTO_STYLE, styleById, recolor, fontsOf, type MapStyleDef } from '~/utils/mapStyles'
 import { STATUS_COLORS } from '~/utils/db'
 import { WHITE, whiteA } from '~/utils/colors'
-import { categoryOf, type CategoryId } from '~/utils/categories'
+import { categoryOf, matchesFilter, type CategoryId } from '~/utils/categories'
 import { ensurePinImages } from '~/utils/pins'
 import { adminCounts } from '~/composables/useAdmin'
 import type { OfflineInfo } from '~/composables/useAppState'
@@ -67,7 +67,7 @@ function placesGeoJSON(): GeoJSON.FeatureCollection {
   return {
     type: 'FeatureCollection',
     features: places.value
-      .filter(p => f === 'all' || p.status === f)
+      .filter(p => matchesFilter(p, f))
       .map(p => ({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
@@ -626,6 +626,7 @@ onMounted(async () => {
     }
     const point = hits.find(h => h.layer.id === 'points')
     if (point) {
+      haptic('select')
       select(point.properties.id)
       const p = places.value.find(x => x.id === point.properties.id)
       if (p) flyTo(p.lng, p.lat)
@@ -641,7 +642,7 @@ onMounted(async () => {
       const f = map.queryRenderedFeatures(e.point, { layers: [`sel-fill-${lvl}`] })[0]
       const code = f?.properties?.code ? String(f.properties.code) : null
       if (code && code !== area.value?.code) {
-        if (navigator.vibrate) navigator.vibrate(6)
+        haptic('select')
         openArea({ code })
         return
       }
@@ -658,7 +659,7 @@ onMounted(async () => {
   let pressTimer: ReturnType<typeof setTimeout> | undefined
   let pressStart: { x: number; y: number } | null = null
   const dropAt = (lng: number, lat: number) => {
-    if (navigator.vibrate) navigator.vibrate(12)
+    haptic('tap')
     startDraft(lng, lat, 'map')
   }
   map.on('touchstart', (e: MapTouchEvent) => {

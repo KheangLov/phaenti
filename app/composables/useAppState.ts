@@ -1,5 +1,5 @@
 // Small shared UI state (client-only app, so module-level refs are safe).
-import type { CategoryId } from '~/utils/categories'
+import type { CategoryId, PersonalId } from '~/utils/categories'
 import { isHiddenPoint } from '~/composables/useHidden'
 const { t } = useLang()
 
@@ -19,7 +19,7 @@ export interface AreaSelection {
 }
 
 export type SheetSnap = 'peek' | 'half' | 'full'
-export type Filter = 'all' | 'been' | 'planned'
+export type Filter = 'all' | 'been' | 'planned' | PersonalId
 
 export interface MapApi {
   flyTo: (lng: number, lat: number, zoom?: number) => void
@@ -44,6 +44,8 @@ const selectedId = ref<string | null>(null)
 const draft = ref<Draft | null>(null)
 const area = ref<AreaSelection | null>(null)
 const picking = ref(false)
+/** Category to give the next place dropped with the + picker (e.g. "home") */
+const pendingCategory = ref<CategoryId | null>(null)
 const searching = ref(false)
 const filter = ref<Filter>('all')
 const snap = ref<SheetSnap>('peek')
@@ -105,7 +107,7 @@ export function useAppState() {
     snap.value = 'peek'
   }
   return {
-    selectedId, draft, area, picking, searching, filter, snap, mapApi,
+    selectedId, draft, area, picking, pendingCategory, searching, filter, snap, mapApi,
     showBoundaries, showExplored, styleChoice,
     select, openDraft, openArea, closeAll,
   }

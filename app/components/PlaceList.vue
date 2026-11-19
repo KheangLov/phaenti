@@ -1,6 +1,7 @@
 <template>
   <div class="px-5 pb-6">
-    <ExplorerStats v-if="admin.lookupReady.value && places.length" class="mb-4" />
+    <PersonalShortcuts class="mb-4" />
+    <ExplorerStats v-if="admin.lookupReady.value && places.some(p => !isPersonal(p.category))" class="mb-4" />
 
     <!-- Empty state -->
     <div v-if="ready && !places.length" class="flex flex-col items-center px-4 pt-6 pb-10 text-center">
@@ -41,7 +42,7 @@
             <span v-if="p.rating" class="flex items-center gap-0.5 text-xs font-semibold text-amber-500">
               <UIcon name="i-lucide-star" class="size-3.5 [&>path]:fill-current" />{{ p.rating }}
             </span>
-            <span v-if="p.visitedAt" class="text-[11px] text-(--ui-text-dimmed)">{{ shortDate(p.visitedAt) }}</span>
+            <span v-if="p.visitedAt && !isPersonal(p.category)" class="text-[11px] text-(--ui-text-dimmed)">{{ shortDate(p.visitedAt) }}</span>
           </span>
         </button>
       </li>
@@ -60,7 +61,7 @@
 <script setup lang="ts">
 import { motion } from 'motion-v'
 import type { Place } from '~/utils/db'
-import { categoryOf } from '~/utils/categories'
+import { categoryOf, matchesFilter, isPersonal } from '~/utils/categories'
 import { pinDataUrl } from '~/utils/pins'
 import { placeAdmin } from '~/composables/useAdmin'
 
@@ -71,7 +72,7 @@ const { t, pick, catLabel, locale } = useLang()
 
 const limit = ref(100)
 watch(filter, () => (limit.value = 100))
-const filtered = computed(() => places.value.filter(p => filter.value === 'all' || p.status === filter.value))
+const filtered = computed(() => places.value.filter(p => matchesFilter(p, filter.value)))
 const visible = computed(() => filtered.value.slice(0, limit.value))
 
 function subtitle(p: Place) {

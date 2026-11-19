@@ -43,6 +43,20 @@ shown network address from a phone on the same Wi-Fi.
 - Map tiles you view are cached automatically; menu → Offline & storage can save "this area in detail" or a Cambodia overview (zoom 5–10)
 - Asks before applying updates; requests persistent storage when installed
 
+## Your own places
+
+Save homes, offices, family and friends (as many of each as you like): tap a shortcut in the
+places panel or in search, or pick "Or save as" when adding any place. Add who lives or works there
+("Grandma", "Uncle Sok"). They get their own pins, don't count as "been / want to go", and tapping a
+shortcut flies to it (or shows them all if you have several).
+
+## App-like behaviour
+
+The phone's Back button / swipe-back closes the top panel (search, place card, expanded list,
+drawers) instead of leaving the app. Swipe a place card down to close it; typing expands the panel
+above the keyboard; inputs never trigger iPhone zoom; no text-selection or long-press callouts on
+the map and buttons; status bar follows light/dark; light haptic ticks on Android.
+
 ## Languages
 
 English and Khmer (ភាសាខ្មែរ): menu (…) → ភាសាខ្មែរ / English. Defaults to Khmer when the phone is set to Khmer,

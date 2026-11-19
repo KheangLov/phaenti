@@ -80,7 +80,7 @@ function choose(id: string) {
   styleChoice.value = id
   // Keep the app's panels in tune with the map: dark map, dark panels
   colorMode.preference = id === AUTO_STYLE ? 'system' : styleById(id).dark ? 'dark' : 'light'
-  if (navigator.vibrate) navigator.vibrate(6)
+  haptic('select')
 }
 
 /** Tiny illustrated map in the style's palette. */

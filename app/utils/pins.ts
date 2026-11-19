@@ -1,7 +1,7 @@
 // Draws category pins (SVG -> bitmap) once and registers them with MapLibre.
 // Every marker on the map is then a GPU symbol, not a DOM element.
 import type { Map as MLMap } from 'maplibre-gl'
-import { CATEGORIES, type Category } from './categories'
+import { ALL_CATEGORIES, isPersonal, type Category } from './categories'
 import { ICON_BODIES } from './iconBodies'
 import { STATUS_COLORS, type PlaceStatus } from './db'
 import { WHITE } from './colors'
@@ -11,7 +11,8 @@ const H = 54
 const RATIO = 2
 
 function pinSvg(c: Category, status: PlaceStatus) {
-  const planned = status === 'planned'
+  const personal = isPersonal(c.id)
+  const planned = status === 'planned' && !personal
   const body = ICON_BODIES[c.icon] ?? ICON_BODIES['map-pin']
   const badge = planned ? ICON_BODIES.heart : ICON_BODIES.check
   const badgeColor = STATUS_COLORS[status]
@@ -27,8 +28,8 @@ function pinSvg(c: Category, status: PlaceStatus) {
   <ellipse cx="20" cy="51.2" rx="5.5" ry="1.8" fill="#000" opacity="0.22"/>
   <path filter="url(#s)" d="M20 3C11.2 3 4.5 9.7 4.5 18.3c0 10.4 12.2 23.4 14.4 25.7a1.5 1.5 0 0 0 2.2 0c2.2-2.3 14.4-15.3 14.4-25.7C35.5 9.7 28.8 3 20 3Z" fill="${fill}" stroke="${stroke}" stroke-width="${planned ? 2.6 : 2.2}"/>
   <g transform="translate(11.6 9.9) scale(0.7)" color="${iconColor}">${body}</g>
-  <circle cx="33.5" cy="8.5" r="7" fill="${badgeColor}" stroke="${WHITE}" stroke-width="2"/>
-  <g transform="translate(29.3 4.3) scale(0.35)" color="${WHITE}">${badge.replace(/stroke-width="2"/g, 'stroke-width="3.4"')}</g>
+  ${personal ? '' : `<circle cx="33.5" cy="8.5" r="7" fill="${badgeColor}" stroke="${WHITE}" stroke-width="2"/>
+  <g transform="translate(29.3 4.3) scale(0.35)" color="${WHITE}">${badge.replace(/stroke-width="2"/g, 'stroke-width="3.4"')}</g>`}
 </svg>`
 }
 
@@ -51,7 +52,7 @@ export async function ensurePinImages(map: MLMap) {
   if (!cache) {
     cache = new Map()
     const jobs: Promise<void>[] = []
-    for (const c of CATEGORIES) {
+    for (const c of ALL_CATEGORIES) {
       for (const s of ['been', 'planned'] as PlaceStatus[]) {
         jobs.push(rasterize(pinSvg(c, s)).then(d => void cache!.set(`pin-${c.id}-${s}`, d)))
       }
@@ -69,7 +70,7 @@ export function pinDataUrl(categoryId: string, status: PlaceStatus) {
   const key = `${categoryId}-${status}`
   let u = urlCache.get(key)
   if (!u) {
-    const c = CATEGORIES.find(x => x.id === categoryId) ?? CATEGORIES[CATEGORIES.length - 1]!
+    const c = ALL_CATEGORIES.find(x => x.id === categoryId) ?? ALL_CATEGORIES[11]!
     u = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(pinSvg(c, status))}`
     urlCache.set(key, u)
   }

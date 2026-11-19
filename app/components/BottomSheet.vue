@@ -21,6 +21,7 @@
       <div
         ref="body"
         class="min-h-0 flex-1 overscroll-contain pb-safe"
+        @focusin="onFocusIn"
         :class="snap === 'peek' ? 'overflow-hidden' : 'overflow-y-auto'"
       >
         <slot />
@@ -33,7 +34,8 @@
 import { motion, useMotionValue, animate } from 'motion-v'
 import type { SheetSnap } from '~/composables/useAppState'
 
-const props = withDefaults(defineProps<{ hidden?: boolean; peek?: number }>(), { hidden: false, peek: 156 })
+const props = withDefaults(defineProps<{ hidden?: boolean; peek?: number; dismissible?: boolean }>(), { hidden: false, peek: 156, dismissible: false })
+const emit = defineEmits<{ dismiss: [] }>()
 const { t } = useLang()
 const snap = defineModel<SheetSnap>('snap', { default: 'peek' })
 
@@ -52,12 +54,19 @@ const spring = { type: 'spring', stiffness: 420, damping: 42, mass: 0.9 } as con
 const go = () => animate(y, target(), spring)
 
 watch([snap, () => props.hidden, offsets], go)
+watch(snap, () => haptic('snap'))
 
 const onResize = () => (winH.value = window.innerHeight)
 onMounted(() => window.addEventListener('resize', onResize, { passive: true }))
 onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 
 const order: SheetSnap[] = ['peek', 'half', 'full']
+
+// Typing in the sheet (notes, names): give it the full height so the keyboard doesn't cover it
+function onFocusIn(e: FocusEvent) {
+  const el = e.target as HTMLElement
+  if (el.matches('input:not([type=date]), textarea')) snap.value = 'full'
+}
 function cycle() {
   if (dragged) return
   snap.value = order[(order.indexOf(snap.value) + 1) % order.length]!
@@ -108,6 +117,12 @@ function onUp() {
   const b = samples[samples.length - 1]!
   const v = (b.y - a.y) / Math.max(1, b.t - a.t) // px per ms
   const projected = y.get() + v * 220
+  // Swipe a place card down past the peek height to close it, like native maps apps
+  if (props.dismissible && projected > offsets.value.peek + 70) {
+    emit('dismiss')
+    setTimeout(() => (dragged = false), 0)
+    return
+  }
   let best: SheetSnap = 'peek'
   let bestD = Infinity
   for (const s of order) {

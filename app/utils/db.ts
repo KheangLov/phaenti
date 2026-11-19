@@ -10,6 +10,8 @@ export interface Place {
   lng: number
   status: PlaceStatus
   category: CategoryId
+  /** For personal places: who lives or works there (e.g. "Grandma", "Uncle Sok") */
+  person?: string
   address: string
   notes: string
   rating: number // 0 = unrated, 1..5

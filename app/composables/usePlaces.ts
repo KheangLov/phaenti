@@ -1,6 +1,6 @@
 import { liveQuery } from 'dexie'
 import type { Place, PlaceStatus } from '~/utils/db'
-import { CATEGORY_MAP, type CategoryId } from '~/utils/categories'
+import { CATEGORY_MAP, isPersonal, type CategoryId } from '~/utils/categories'
 import { db } from '~/utils/db'
 
 import { isHiddenPoint, useHidden } from '~/composables/useHidden'
@@ -42,6 +42,7 @@ export interface NewPlace {
   lng: number
   status: PlaceStatus
   category?: CategoryId
+  person?: string
   address?: string
   source?: Place['source']
 }
@@ -65,10 +66,11 @@ export function usePlaces() {
       lng: +p.lng.toFixed(6),
       status: p.status,
       category: p.category ?? 'other',
+      ...(p.person ? { person: p.person.trim() } : {}),
       address: p.address ?? '',
       notes: '',
       rating: 0,
-      visitedAt: p.status === 'been' ? new Date().toISOString().slice(0, 10) : null,
+      visitedAt: p.status === 'been' && !isPersonal(p.category) ? new Date().toISOString().slice(0, 10) : null,
       tags: [],
       source: p.source ?? 'map',
       createdAt: now,
@@ -145,6 +147,7 @@ function normalize(r: any): Place | null {
     lng,
     status: r.status === 'been' ? 'been' : 'planned',
     category: r.category in CATEGORY_MAP ? r.category : 'other',
+    ...(typeof r.person === 'string' && r.person ? { person: r.person.slice(0, 120) } : {}),
     address: String(r.address ?? ''),
     notes: String(r.notes ?? ''),
     rating: Math.max(0, Math.min(5, Number(r.rating) || 0)),

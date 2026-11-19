@@ -13,7 +13,7 @@ export default defineNuxtConfig({
       scan: true,
       sizeLimitKb: 96,
       // Icons referenced dynamically (categories)
-      icons: ['utensils', 'coffee', 'wine', 'landmark', 'trees', 'umbrella', 'mountain', 'bed-double', 'shopping-bag', 'palette', 'plane', 'map-pin', 'map', 'building-2', 'home', 'flag', 'history', 'link', 'navigation', 'search', 'x', 'chevron-right', 'arrow-up-left'].map(i => `lucide:${i}`),
+      icons: ['utensils', 'coffee', 'wine', 'landmark', 'trees', 'umbrella', 'mountain', 'bed-double', 'shopping-bag', 'palette', 'plane', 'map-pin', 'map', 'building-2', 'home', 'flag', 'history', 'link', 'navigation', 'search', 'x', 'chevron-right', 'arrow-up-left', 'house', 'briefcase-business', 'users-round', 'heart-handshake'].map(i => `lucide:${i}`),
     },
   },
   colorMode: { preference: 'system', fallback: 'light' },
@@ -23,7 +23,7 @@ export default defineNuxtConfig({
       title: 'Phaenti — ផែនទី',
       htmlAttrs: { lang: 'en' },
       meta: [
-        { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, interactive-widget=resizes-content' },
         { name: 'description', content: 'Places you have been and places you want to go. Private, offline, on your phone.' },
         { name: 'theme-color', content: '#f8fafc', media: '(prefers-color-scheme: light)' },
         { name: 'theme-color', content: '#0f172a', media: '(prefers-color-scheme: dark)' },

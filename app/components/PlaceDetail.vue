@@ -17,6 +17,9 @@
           :aria-label="t('place.namePlaceholder')"
           @change="save({ name: ($event.target as HTMLInputElement).value.trim() || place.name })"
         >
+        <p v-if="personal" class="mt-0.5 flex items-center gap-1 text-sm font-semibold" :style="{ color: cat.color }">
+          <UIcon :name="`i-lucide-${cat.icon}`" class="size-4" />{{ catLabel(cat.id, cat.label) }}<template v-if="place.person && place.person !== place.name"> · {{ place.person }}</template>
+        </p>
         <p class="mt-0.5 truncate text-sm text-(--ui-text-muted)">{{ place.address || formatCoords(place.lat, place.lng) }}</p>
         <div v-if="areas.length" class="mt-1.5 flex flex-wrap gap-1">
           <button
@@ -33,12 +36,27 @@
       <UButton icon="i-lucide-x" color="neutral" variant="soft" class="rounded-full" :aria-label="t('place.close')" @click="select(null)" />
     </div>
 
-    <div class="mt-4">
-      <StatusToggle :model-value="place.status" @update:model-value="setStatus" />
-    </div>
-    <div class="mt-3">
-      <CategoryPicker :model-value="place.category" @update:model-value="setCategory" />
-    </div>
+    <template v-if="personal">
+      <div class="mt-4">
+        <PersonalPicker :model-value="place.category" @update:model-value="setCategory" />
+      </div>
+      <input
+        :value="place.person ?? ''"
+        class="mt-3 h-12 w-full rounded-2xl bg-(--ui-bg-elevated) px-4 text-base outline-none placeholder:text-(--ui-text-dimmed)"
+        :placeholder="personPlaceholder"
+        :aria-label="personPlaceholder"
+        enterkeyhint="done"
+        @change="save({ person: ($event.target as HTMLInputElement).value.trim() })"
+      >
+    </template>
+    <template v-else>
+      <div class="mt-4">
+        <StatusToggle :model-value="place.status" @update:model-value="setStatus" />
+      </div>
+      <div class="mt-3">
+        <CategoryPicker :model-value="place.category" @update:model-value="setCategory" />
+      </div>
+    </template>
 
     <!-- Quick actions -->
     <div class="mt-4 grid grid-cols-3 gap-2">
@@ -63,19 +81,19 @@
 
     <!-- Details -->
     <div class="mt-5 space-y-4">
-      <div v-if="place.status === 'been'" class="flex items-center justify-between gap-3">
+      <div v-if="place.status === 'been' && !personal" class="flex items-center justify-between gap-3">
         <label for="visited" class="text-sm font-medium text-(--ui-text-muted)">{{ t('place.visitedOn') }}</label>
         <input
           id="visited"
           type="date"
           :value="place.visitedAt ?? ''"
           :max="today"
-          class="rounded-xl bg-(--ui-bg-elevated) px-3 py-2 text-sm outline-none"
+          class="rounded-xl bg-(--ui-bg-elevated) px-3 py-2 text-base outline-none"
           @change="save({ visitedAt: ($event.target as HTMLInputElement).value || null })"
         >
       </div>
 
-      <div class="flex items-center justify-between gap-3">
+      <div v-if="!personal" class="flex items-center justify-between gap-3">
         <span class="text-sm font-medium text-(--ui-text-muted)">{{ place.status === 'been' ? t('place.yourRating') : t('place.howExcited') }}</span>
         <div class="flex gap-0.5" role="radiogroup" aria-label="Rating">
           <motion.button
@@ -109,7 +127,7 @@
           v-model="notes"
           rows="3"
           :placeholder="t('place.notesPlaceholder')"
-          class="w-full resize-none rounded-2xl bg-(--ui-bg-elevated) px-3.5 py-3 text-[15px] outline-none placeholder:text-(--ui-text-dimmed) field-sizing-content min-h-24"
+          class="w-full resize-none rounded-2xl bg-(--ui-bg-elevated) px-3.5 py-3 text-base outline-none placeholder:text-(--ui-text-dimmed) field-sizing-content min-h-24"
         />
       </div>
 
@@ -117,6 +135,13 @@
         <span>{{ formatCoords(place.lat, place.lng) }}</span>
         <span>{{ t('place.added', { date: added }) }}</span>
       </div>
+
+      <button
+        class="mx-auto block text-xs font-medium text-(--ui-text-muted)"
+        @click="personal ? setCategory('other') : setCategory('home')"
+      >
+        {{ personal ? t('personal.notPersonal') : t('personal.makePersonal') }}
+      </button>
 
       <UButton
         block
@@ -136,7 +161,7 @@
 import { motion } from 'motion-v'
 import { watchDebounced } from '@vueuse/core'
 import { STATUS_COLORS, type Place, type PlaceStatus } from '~/utils/db'
-import { categoryOf, type CategoryId } from '~/utils/categories'
+import { categoryOf, isPersonal, type CategoryId } from '~/utils/categories'
 import { pinDataUrl } from '~/utils/pins'
 import { placeAdmin } from '~/composables/useAdmin'
 
@@ -157,12 +182,15 @@ function goArea(code: string) {
 }
 function setCategory(category: CategoryId) {
   if (category === props.place.category) return
-  save({ category })
+  save(isPersonal(category) ? { category, status: 'been' } : { category })
   mapApiRef.value?.pulse(props.place.lng, props.place.lat, categoryOf(category).color)
 }
 const mapApi = computed(() => mapApiRef.value)
 const toast = useToast()
-const { t, pick, locale } = useLang()
+const { t, pick, locale, catLabel } = useLang()
+const personal = computed(() => isPersonal(props.place.category))
+const cat = computed(() => categoryOf(props.place.category))
+const personPlaceholder = computed(() => t(`personal.who${props.place.category.charAt(0).toUpperCase()}${props.place.category.slice(1)}`))
 
 const today = new Date().toISOString().slice(0, 10)
 const added = computed(() => new Date(props.place.createdAt).toLocaleDateString(locale.value, { day: 'numeric', month: 'short', year: 'numeric' }))

@@ -1,6 +1,8 @@
+export type PersonalId = 'home' | 'office' | 'family' | 'friend'
 export type CategoryId =
   | 'food' | 'cafe' | 'nightlife' | 'temple' | 'nature' | 'beach'
   | 'viewpoint' | 'stay' | 'shopping' | 'culture' | 'transport' | 'other'
+  | PersonalId
 
 export interface Category {
   id: CategoryId
@@ -26,7 +28,17 @@ export const CATEGORIES: Category[] = [
   { id: 'other', label: 'Other', km: 'ផ្សេងៗ', icon: 'map-pin', color: '#52525b', color2: '#3f3f46' },
 ]
 
-export const CATEGORY_MAP = Object.fromEntries(CATEGORIES.map(c => [c.id, c])) as Record<CategoryId, Category>
+/** Your own places: homes, offices, family and friends. Not "been / want to go" spots. */
+export const PERSONAL: Category[] = [
+  { id: 'home', label: 'Home', km: 'ផ្ទះ', icon: 'house', color: '#2563eb', color2: '#1d4ed8' },
+  { id: 'office', label: 'Office', km: 'ការិយាល័យ', icon: 'briefcase-business', color: '#0f766e', color2: '#115e59' },
+  { id: 'family', label: 'Family', km: 'គ្រួសារ', icon: 'users-round', color: '#e11d48', color2: '#be123c' },
+  { id: 'friend', label: 'Friend', km: 'មិត្តភក្តិ', icon: 'heart-handshake', color: '#d97706', color2: '#b45309' },
+]
+export const ALL_CATEGORIES = [...CATEGORIES, ...PERSONAL]
+export const isPersonal = (id: string | undefined | null): id is PersonalId => !!id && PERSONAL.some(p => p.id === id)
+
+export const CATEGORY_MAP = Object.fromEntries(ALL_CATEGORIES.map(c => [c.id, c])) as Record<CategoryId, Category>
 
 export function categoryOf(id: string | undefined | null): Category {
   return CATEGORY_MAP[(id ?? 'other') as CategoryId] ?? CATEGORY_MAP.other
@@ -65,3 +77,10 @@ export const QUICK_SEARCHES: { id: CategoryId; label: string; q: string; tags: s
   { id: 'viewpoint', label: 'Viewpoints', q: 'viewpoint', tags: ['tourism:viewpoint', 'natural:peak'] },
   { id: 'culture', label: 'Museums', q: 'museum', tags: ['tourism:museum', 'tourism:attraction', 'historic'] },
 ]
+
+/** List / map filter: all, been, want to go (travel spots only), or one personal type. */
+export function matchesFilter(p: { status: string; category: string }, f: string) {
+  if (f === 'all') return true
+  if (isPersonal(f)) return p.category === f
+  return p.status === f && !isPersonal(p.category)
+}

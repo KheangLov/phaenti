@@ -80,3 +80,19 @@ html.lang-km { line-height: 1.6; }
 html.lang-km .truncate { line-height: 1.7; }
 html.lang-km [class*="tracking-"] { letter-spacing: normal !important; }
 html.lang-km .uppercase { text-transform: none; }
+
+/* Feel like an app, not a web page */
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+input, textarea, [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+button, a, [role="button"], [role="radio"], [role="menuitem"] {
+  touch-action: manipulation;
+}
+img { -webkit-user-drag: none; }

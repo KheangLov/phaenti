@@ -202,6 +202,23 @@ export const en = {
     labelArea: 'this area',
     labelCambodia: 'Cambodia',
   },
+  personal: {
+    yourPlaces: 'Your places',
+    orSaveAs: 'Or save as',
+    saveAs: 'Save as {label}',
+    add: 'Add',
+    count: '{n} places',
+    whoHome: 'Who lives here? e.g. Grandma',
+    whoOffice: 'Company or team',
+    whoFamily: 'Who? e.g. Uncle Sok',
+    whoFriend: 'Friend’s name',
+    type: 'Type of place',
+    notPersonal: 'Not a personal place',
+    makePersonal: 'Mark as home, office, family or friend',
+    saved: 'Saved as {label}',
+    pickSpot: 'Move the map to your {label}',
+    showing: 'Showing {label}',
+  },
   hidden: {
     title: 'This area isn’t available',
     body: 'Phaenti doesn’t show places in this country.',
@@ -420,6 +437,23 @@ export const km: Shape<typeof en> = {
     labelArea: 'តំបន់នេះ',
     labelCambodia: 'កម្ពុជា',
   },
+  personal: {
+    yourPlaces: 'ទីកន្លែងរបស់អ្នក',
+    orSaveAs: 'ឬរក្សាទុកជា',
+    saveAs: 'រក្សាទុកជា{label}',
+    add: 'បន្ថែម',
+    count: '{n} កន្លែង',
+    whoHome: 'អ្នកណារស់នៅទីនេះ? ឧ. លោកយាយ',
+    whoOffice: 'ក្រុមហ៊ុន ឬក្រុមការងារ',
+    whoFamily: 'អ្នកណា? ឧ. ពូសុខ',
+    whoFriend: 'ឈ្មោះមិត្តភក្តិ',
+    type: 'ប្រភេទទីកន្លែង',
+    notPersonal: 'មិនមែនជាទីកន្លែងផ្ទាល់ខ្លួនទេ',
+    makePersonal: 'កំណត់ជាផ្ទះ ការិយាល័យ គ្រួសារ ឬមិត្តភក្តិ',
+    saved: 'បានរក្សាទុកជា{label}',
+    pickSpot: 'អូសផែនទីទៅ{label}របស់អ្នក',
+    showing: 'កំពុងបង្ហាញ{label}',
+  },
   hidden: {
     title: 'តំបន់នេះមិនអាចប្រើបានទេ',
     body: 'Phaenti មិនបង្ហាញទីកន្លែងក្នុងប្រទេសនេះទេ។',
@@ -437,6 +471,7 @@ export const km: Shape<typeof en> = {
 
 // Category labels and quick search labels
 export const CATEGORY_KM: Record<string, string> = {
+  home: 'ផ្ទះ', office: 'ការិយាល័យ', family: 'គ្រួសារ', friend: 'មិត្តភក្តិ',
   food: 'អាហារ', cafe: 'កាហ្វេ', nightlife: 'កម្សាន្តពេលយប់', temple: 'វត្ត', nature: 'ធម្មជាតិ', beach: 'ឆ្នេរ',
   viewpoint: 'ទេសភាព', stay: 'កន្លែងស្នាក់នៅ', shopping: 'ទិញឥវ៉ាន់', culture: 'វប្បធម៌', transport: 'ដឹកជញ្ជូន', other: 'ផ្សេងៗ',
 }

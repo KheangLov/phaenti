@@ -62,7 +62,7 @@
             autocapitalize="off"
             spellcheck="false"
             :placeholder="placeholder"
-            class="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-(--ui-text-dimmed)"
+            class="h-full min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-(--ui-text-dimmed)"
             @focus="openSearch"
             @keydown.down.prevent="move(1)"
             @keydown.up.prevent="move(-1)"
@@ -95,7 +95,10 @@
         >
           <!-- Idle: shortcuts, recents, provinces -->
           <template v-if="!q.trim() && !quick">
-            <section class="mt-1">
+            <section class="mt-1 mb-5">
+              <PersonalShortcuts @picked="close" />
+            </section>
+            <section>
               <h3 class="section">{{ t('search.nearby') }}</h3>
               <div class="-mx-3 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <div class="grid w-max grid-flow-col grid-rows-2 gap-2">
@@ -213,7 +216,7 @@
 import { motion, AnimatePresence } from 'motion-v'
 import { refDebounced } from '@vueuse/core'
 import type { GeoResult } from '~/composables/useGeocode'
-import { QUICK_SEARCHES, categoryOf, type CategoryId } from '~/utils/categories'
+import { QUICK_SEARCHES, categoryOf, isPersonal, type CategoryId } from '~/utils/categories'
 import { pinDataUrl } from '~/utils/pins'
 import { adminCounts } from '~/composables/useAdmin'
 import { isBlockedText } from '~/composables/useHidden'
@@ -289,7 +292,11 @@ const gmaps = computed(() => parseGoogleMapsUrl(q.value))
 const localHits = computed(() => {
   const s = q.value.trim().toLowerCase()
   if (s.length < 2 || blocked.value) return []
-  return places.value.filter(p => p.name.toLowerCase().includes(s) || p.address.toLowerCase().includes(s) || p.notes.toLowerCase().includes(s)).slice(0, 4)
+  return places.value.filter(p =>
+    p.name.toLowerCase().includes(s) || p.address.toLowerCase().includes(s) || p.notes.toLowerCase().includes(s)
+    || (p.person ?? '').toLowerCase().includes(s)
+    || (isPersonal(p.category) && (p.category.startsWith(s) || catLabel(p.category, '').toLowerCase().includes(s))),
+  ).slice(0, 6)
 })
 const adminHits = computed(() => (admin.ready.value && !blocked.value && !coords.value && !gmaps.value ? admin.search(q.value, 6) : []))
 
@@ -475,7 +482,7 @@ function highlight(text: string) {
   ]
 }
 
-defineExpose({ openSearch: () => { openSearch(); input.value?.focus() } })
+defineExpose({ openSearch: () => { openSearch(); input.value?.focus() }, close })
 </script>
 
 <style scoped>

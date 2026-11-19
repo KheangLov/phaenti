@@ -3,7 +3,7 @@
     <div class="flex items-start gap-3">
       <motion.img
         :key="`${category}`"
-        :src="pinDataUrl(category, 'planned')"
+        :src="pinDataUrl(category, personal ? 'been' : 'planned')"
         alt=""
         class="-mt-1 h-13 w-11 shrink-0"
         :initial="{ y: -14, opacity: 0, scale: 0.7 }"
@@ -26,6 +26,33 @@
       <UButton icon="i-lucide-x" color="neutral" variant="soft" class="rounded-full" :aria-label="t('place.discard')" @click="closeAll" />
     </div>
 
+    <!-- Personal place: home, office, family, friend -->
+    <template v-if="personal">
+      <div class="mt-4">
+        <PersonalPicker v-model="category" />
+      </div>
+      <input
+        v-model="person"
+        class="mt-3 h-12 w-full rounded-2xl bg-(--ui-bg-elevated) px-4 text-base outline-none placeholder:text-(--ui-text-dimmed)"
+        :placeholder="personPlaceholder"
+        :aria-label="personPlaceholder"
+        enterkeyhint="done"
+      >
+      <motion.button
+        class="mt-3 flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-semibold text-white"
+        :style="{ background: `linear-gradient(135deg, ${cat.color}, ${cat.color2})`, boxShadow: `0 10px 22px -10px ${cat.color}` }"
+        :while-press="{ scale: 0.97 }"
+        @click="save('been')"
+      >
+        <UIcon :name="`i-lucide-${cat.icon}`" class="size-5" />
+        {{ t('personal.saveAs', { label: catLabel(cat.id, cat.label) }) }}
+      </motion.button>
+      <button class="mx-auto mt-3 block text-xs font-medium text-(--ui-text-muted)" @click="category = 'other'">
+        {{ t('personal.notPersonal') }}
+      </button>
+    </template>
+
+    <template v-else>
     <div class="mt-4">
       <CategoryPicker v-model="category" />
     </div>
@@ -47,6 +74,23 @@
       </motion.button>
     </div>
 
+    <!-- Or save as one of your own places -->
+    <div class="mt-4 flex items-center gap-2">
+      <span class="shrink-0 text-xs font-medium text-(--ui-text-dimmed)">{{ t('personal.orSaveAs') }}</span>
+      <div class="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none]">
+        <button
+          v-for="c in PERSONAL"
+          :key="c.id"
+          class="flex h-8 shrink-0 items-center gap-1 rounded-full bg-(--ui-bg-elevated) px-2.5 text-xs font-semibold active:scale-95 transition"
+          @click="category = c.id; haptic('select')"
+        >
+          <UIcon :name="`i-lucide-${c.icon}`" class="size-3.5" :style="{ color: c.color }" />
+          {{ catLabel(c.id, c.label) }}
+        </button>
+      </div>
+    </div>
+    </template>
+
     <div class="mt-4 flex items-center justify-between text-xs text-(--ui-text-dimmed)">
       <span>{{ formatCoords(draft.lat, draft.lng) }}</span>
       <a :href="googleMapsUrl(draft.lat, draft.lng)" target="_blank" rel="noopener" class="inline-flex items-center gap-1 font-medium text-(--ui-text-muted)">
@@ -59,7 +103,7 @@
 <script setup lang="ts">
 import { motion } from 'motion-v'
 import { STATUS_COLORS, type PlaceStatus } from '~/utils/db'
-import { categoryOf, type CategoryId } from '~/utils/categories'
+import { categoryOf, isPersonal, PERSONAL, type CategoryId } from '~/utils/categories'
 import { pinDataUrl } from '~/utils/pins'
 import type { Draft } from '~/composables/useAppState'
 
@@ -68,7 +112,11 @@ const { add } = usePlaces()
 const { closeAll, select, mapApi, draft: draftRef } = useAppState()
 const admin = useAdmin()
 const toast = useToast()
-const { t, pick } = useLang()
+const { t, pick, catLabel } = useLang()
+const person = ref('')
+const personal = computed(() => isPersonal(category.value))
+const cat = computed(() => categoryOf(category.value))
+const personPlaceholder = computed(() => t(`personal.who${category.value.charAt(0).toUpperCase()}${category.value.slice(1)}`))
 
 const name = ref(props.draft.name)
 const category = ref<CategoryId>(props.draft.category ?? 'other')
@@ -94,10 +142,23 @@ const actions = [
 
 async function save(status: PlaceStatus) {
   const d = props.draft
-  const p = await add({ name: name.value || t('place.untitled'), address: d.address, lat: d.lat, lng: d.lng, status, category: category.value, source: d.source })
+  const label = catLabel(cat.value.id, cat.value.label)
+  // A personal place with no name of its own gets e.g. "Home" or "Grandma's home"
+  const fallbackName = personal.value ? (person.value.trim() || label) : t('place.untitled')
+  const nameTouched = name.value && name.value !== t('place.droppedPin')
+  const p = await add({
+    name: personal.value && !nameTouched ? fallbackName : (name.value || fallbackName),
+    address: d.address, lat: d.lat, lng: d.lng, status, category: category.value, source: d.source,
+    person: personal.value ? person.value : undefined,
+  })
   mapApi.value?.pulse(p.lng, p.lat, categoryOf(p.category).color)
-  if (navigator.vibrate) navigator.vibrate([8, 40, 8])
+  haptic('success')
   select(p.id)
-  toast.add({ title: status === 'been' ? t('toast.addedBeen') : t('toast.addedPlanned'), icon: 'i-lucide-map-pin-check', color: status === 'been' ? 'primary' : 'secondary', duration: 2200 })
+  toast.add({
+    title: personal.value ? t('personal.saved', { label }) : status === 'been' ? t('toast.addedBeen') : t('toast.addedPlanned'),
+    icon: personal.value ? `i-lucide-${cat.value.icon}` : 'i-lucide-map-pin-check',
+    color: personal.value || status === 'been' ? 'primary' : 'secondary',
+    duration: 2200,
+  })
 }
 </script>

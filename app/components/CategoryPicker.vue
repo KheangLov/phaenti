@@ -34,6 +34,6 @@ const { catLabel } = useLang()
 
 function pick(id: CategoryId) {
   model.value = id
-  if (navigator.vibrate) navigator.vibrate(4)
+  haptic('select')
 }
 </script>

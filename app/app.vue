@@ -100,9 +100,9 @@
           :transition="spring"
         >
           <div class="glass shadow-sheet mx-auto max-w-xl rounded-[28px] p-4">
-            <p class="mb-3 text-center text-sm text-(--ui-text-muted)">{{ t('app.movePin') }}</p>
+            <p class="mb-3 text-center text-sm text-(--ui-text-muted)">{{ pendingCategory ? t('personal.pickSpot', { label: catLabel(pendingCategory, categoryOf(pendingCategory).label) }) : t('app.movePin') }}</p>
             <div class="grid grid-cols-[auto_1fr] gap-2">
-              <UButton color="neutral" variant="soft" size="xl" class="rounded-2xl px-5" @click="picking = false">{{ t('app.cancel') }}</UButton>
+              <UButton color="neutral" variant="soft" size="xl" class="rounded-2xl px-5" @click="picking = false; pendingCategory = null">{{ t('app.cancel') }}</UButton>
               <UButton size="xl" block class="rounded-2xl" icon="i-lucide-map-pin" @click="confirmPick">{{ t('app.useSpot') }}</UButton>
             </div>
           </div>
@@ -110,7 +110,7 @@
       </AnimatePresence>
 
       <!-- Bottom sheet -->
-      <BottomSheet v-model:snap="snap" :hidden="picking" :peek="PEEK">
+      <BottomSheet v-model:snap="snap" :hidden="picking" :peek="PEEK" :dismissible="!!(draft || selected || area)" @dismiss="closeAll">
         <template #header>
           <div v-if="!draft && !selected && !area" class="px-5 pb-3">
             <div class="flex items-end justify-between">
@@ -137,7 +137,7 @@
                 :key="f.value"
                 class="relative h-9 rounded-full px-3.5 text-sm font-medium transition-colors"
                 :class="filter === f.value ? 'text-(--ui-bg)' : 'text-(--ui-text-muted) bg-(--ui-bg-elevated)'"
-                @click="filter = f.value"
+                @click="filter = isPersonal(f.value) ? 'all' : f.value"
               >
                 <motion.span
                   v-if="filter === f.value"
@@ -181,20 +181,21 @@ import { motion, AnimatePresence } from 'motion-v'
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { Filter } from '~/composables/useAppState'
 import { isStandalone } from '~/composables/useOffline'
+import { isPersonal, categoryOf, type CategoryId } from '~/utils/categories'
 import { en as uiEn, km as uiKm } from '@nuxt/ui/locale'
 
 const PEEK = 156
 const spring = { type: 'spring', stiffness: 420, damping: 38 } as const
 
 const { places, toExport, importFile } = usePlaces()
-const { selectedId, draft, area, picking, searching, filter, snap, mapApi, closeAll, showBoundaries, showExplored } = useAppState()
+const { selectedId, draft, area, picking, pendingCategory, searching, filter, snap, mapApi, closeAll, showBoundaries, showExplored } = useAppState()
 const colorMode = useColorMode()
 const toast = useToast()
 const { $pwa } = useNuxtApp()
-const { t, isKm, lang, setLang } = useLang()
+const { t, isKm, setLang, catLabel } = useLang()
 const countSegments = computed(() => t('app.countsLine').split(/(\{been\}|\{planned\})/).filter(Boolean))
 
-const mapView = ref<{ startDraft: (lng: number, lat: number, s: 'map' | 'location') => void }>()
+const mapView = ref<{ startDraft: (lng: number, lat: number, s: 'map' | 'location', category?: CategoryId) => void }>()
 const moving = ref(false)
 const locating = ref(false)
 const fileInput = ref<HTMLInputElement>()
@@ -205,14 +206,20 @@ const showFab = computed(() => !picking.value && !draft.value && !selected.value
 
 const counts = computed(() => {
   let been = 0
-  for (const p of places.value) if (p.status === 'been') been++
-  return { been, planned: places.value.length - been }
+  let planned = 0
+  for (const p of places.value) {
+    if (isPersonal(p.category)) continue
+    if (p.status === 'been') been++
+    else planned++
+  }
+  return { been, planned }
 })
 
 const filters = computed<{ value: Filter; label: string }[]>(() => [
   { value: 'all', label: `${t('app.all')} ${places.value.length || ''}`.trim() },
   { value: 'been', label: t('app.been') },
   { value: 'planned', label: t('app.wantToGo') },
+  ...(isPersonal(filter.value) ? [{ value: filter.value, label: `× ${catLabel(filter.value, categoryOf(filter.value).label)}` }] : []),
 ])
 
 // If a selected place gets deleted elsewhere, fall back to the list
@@ -228,7 +235,8 @@ function confirmPick() {
   const c = mapApi.value?.center()
   if (!c) return
   picking.value = false
-  mapView.value?.startDraft(c.lng, c.lat, 'map')
+  mapView.value?.startDraft(c.lng, c.lat, 'map', pendingCategory.value ?? undefined)
+  pendingCategory.value = null
 }
 
 async function locate() {
@@ -243,7 +251,28 @@ const { online } = useOffline()
 const installOpen = ref(false)
 const styleOpen = ref(false)
 const offlineOpen = ref(false)
-const search = ref<{ openSearch: () => void }>()
+const search = ref<{ openSearch: () => void; close: () => void }>()
+
+// ---- Native-style Back: each open layer closes in turn ----
+useBackLayer('sheet', () => snap.value !== 'peek' && !draft.value && !selectedId.value && !area.value, () => (snap.value = 'peek'))
+useBackLayer('panel', () => !!(draft.value || selectedId.value || area.value), () => closeAll())
+useBackLayer('picking', () => picking.value, () => {
+  picking.value = false
+  pendingCategory.value = null
+})
+useBackLayer('search', () => searching.value, () => search.value?.close())
+useBackLayer('style', () => styleOpen.value, () => (styleOpen.value = false))
+useBackLayer('offline', () => offlineOpen.value, () => (offlineOpen.value = false))
+useBackLayer('install', () => installOpen.value, () => (installOpen.value = false))
+
+// Status-bar colour follows the app theme
+watch(() => colorMode.value, (m) => {
+  if (!import.meta.client) return
+  document.querySelectorAll('meta[name="theme-color"]').forEach((el) => {
+    el.removeAttribute('media')
+    el.setAttribute('content', m === 'dark' ? '#18181b' : '#fafaf7')
+  })
+}, { immediate: true })
 const standalone = ref(isStandalone())
 
 // New version available: ask, never reload under the user's feet
