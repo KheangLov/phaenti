@@ -51,7 +51,7 @@ their Khmer form, and Noto Sans Khmer is bundled so Khmer looks the same on ever
 
 ## Hidden country
 
-Thailand is hidden: its land is covered on every map style, basemap labels naming it are removed,
+Thailand is hidden: its land is turned into sea (each style's own water colour) on every map style, basemap labels naming it are removed,
 search results there are dropped, and pins can't be added there. Places already saved inside it stay
 in your backup but are not shown. The shape (`public/geo/hidden-th.json`) is Thailand's land from
 geoBoundaries minus Cambodia's territory, so nothing inside Cambodia is ever covered.

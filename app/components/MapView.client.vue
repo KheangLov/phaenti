@@ -132,13 +132,22 @@ function hideCountries() {
     if (f === undefined) map.setFilter(l.id, ['!', named])
     else if (isExpressionFilter(f)) map.setFilter(l.id, ['all', f as ExpressionSpecification, ['!', named]])
   }
-  // 2. Cover the country's land with the map's own ground colour, above every basemap layer
-  const bg = style.layers.find(l => l.type === 'background') as { paint?: Record<string, unknown> } | undefined
-  const raw = bg?.paint?.['background-color']
-  const ground = typeof raw === 'string' ? raw : isDark.value ? '#161616' : '#f2efe9'
+  // 2. Turn the country into sea: fill its land with the style's own water colour,
+  //    above every basemap layer, so it blends into the surrounding water.
   map.addSource('hidden', { type: 'geojson', data: `${location.origin}${HIDDEN_GEO_URL}` })
-  map.addLayer({ id: 'hidden-fill', type: 'fill', source: 'hidden', paint: { 'fill-color': ground, 'fill-antialias': true } })
-  map.addLayer({ id: 'hidden-edge', type: 'line', source: 'hidden', layout: { 'line-join': 'round' }, paint: { 'line-color': ground, 'line-width': 1.5 } })
+  map.addLayer({ id: 'hidden-fill', type: 'fill', source: 'hidden', paint: { 'fill-color': waterColor(style), 'fill-antialias': true } })
+}
+
+/** The style's sea colour: a plain colour, or a zoom-only expression we can reuse as-is. */
+function waterColor(style: StyleSpecification): unknown {
+  const fills = style.layers.filter(l => l.type === 'fill') as { id: string; 'source-layer'?: string; paint?: Record<string, unknown> }[]
+  const water = fills.find(l => /ocean|sea/.test(l.id))
+    ?? fills.find(l => l['source-layer'] === 'water' || l['source-layer'] === 'ocean')
+    ?? fills.find(l => /water/.test(l.id))
+  const c = water?.paint?.['fill-color']
+  if (typeof c === 'string') return c
+  if (Array.isArray(c) && !JSON.stringify(c).includes('"get"') && !JSON.stringify(c).includes('feature-state')) return c
+  return isDark.value ? '#1b2633' : '#a8cbe8'
 }
 
 function addAdminLayers() {
