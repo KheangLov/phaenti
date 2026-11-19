@@ -1,5 +1,5 @@
 <template>
-  <UApp :toaster="{ position: 'top-center', duration: 2500 }">
+  <UApp :toaster="{ position: 'top-center', duration: 2500 }" :locale="isKm ? uiKm : uiEn">
     <main class="fixed inset-0 overflow-hidden">
       <MapView ref="mapView" @moving="moving = $event" />
 
@@ -18,7 +18,7 @@
           :exit="{ y: -12, opacity: 0, scale: 0.9 }"
           @click="offlineOpen = true"
         >
-          <UIcon name="i-lucide-cloud-off" class="size-4" /> Offline · your data is here
+          <UIcon name="i-lucide-cloud-off" class="size-4" /> {{ t('app.offlinePill') }}
         </motion.button>
       </AnimatePresence>
 
@@ -29,18 +29,18 @@
         :animate="{ x: picking ? 80 : 0 }"
         :transition="spring"
       >
-        <button class="glass shadow-float grid size-11 place-items-center rounded-2xl active:scale-90 transition" aria-label="Map style" @click="styleOpen = true">
+        <button class="glass shadow-float grid size-11 place-items-center rounded-2xl active:scale-90 transition" :aria-label="t('app.mapStyle')" @click="styleOpen = true">
           <UIcon name="i-lucide-layers" class="size-5" />
         </button>
         <UDropdownMenu :items="menu" :content="{ align: 'end', side: 'left', sideOffset: 8 }">
-          <button class="glass shadow-float grid size-11 place-items-center rounded-2xl active:scale-90 transition" aria-label="Menu">
+          <button class="glass shadow-float grid size-11 place-items-center rounded-2xl active:scale-90 transition" :aria-label="t('app.menu')">
             <UIcon name="i-lucide-ellipsis" class="size-5" />
           </button>
         </UDropdownMenu>
-        <button class="glass shadow-float grid size-11 place-items-center rounded-2xl active:scale-90 transition" aria-label="Show all places" @click="mapApi?.fitAll()">
+        <button class="glass shadow-float grid size-11 place-items-center rounded-2xl active:scale-90 transition" :aria-label="t('app.showAll')" @click="mapApi?.fitAll()">
           <UIcon name="i-lucide-scan" class="size-5" />
         </button>
-        <button class="glass shadow-float grid size-11 place-items-center rounded-2xl active:scale-90 transition" aria-label="My location" @click="locate">
+        <button class="glass shadow-float grid size-11 place-items-center rounded-2xl active:scale-90 transition" :aria-label="t('app.myLocation')" @click="locate">
           <UIcon :name="locating ? 'i-lucide-loader-circle' : 'i-lucide-locate-fixed'" class="size-5 text-sky-500" :class="locating ? 'animate-spin' : ''" />
         </button>
       </motion.div>
@@ -49,7 +49,7 @@
       <motion.button
         class="absolute right-4 z-10 grid size-15 place-items-center rounded-[22px] bg-linear-to-br from-emerald-500 to-violet-500 text-white shadow-xl"
         :style="{ bottom: `${PEEK + 16}px` }"
-        aria-label="Add a place"
+        :aria-label="t('app.addPlace')"
         :initial="{ scale: 0 }"
         :animate="{ scale: showFab ? 1 : 0, rotate: showFab ? 0 : -45 }"
         :while-press="{ scale: 0.9 }"
@@ -100,10 +100,10 @@
           :transition="spring"
         >
           <div class="glass shadow-sheet mx-auto max-w-xl rounded-[28px] p-4">
-            <p class="mb-3 text-center text-sm text-(--ui-text-muted)">Move the map to place the pin</p>
+            <p class="mb-3 text-center text-sm text-(--ui-text-muted)">{{ t('app.movePin') }}</p>
             <div class="grid grid-cols-[auto_1fr] gap-2">
-              <UButton color="neutral" variant="soft" size="xl" class="rounded-2xl px-5" @click="picking = false">Cancel</UButton>
-              <UButton size="xl" block class="rounded-2xl" icon="i-lucide-map-pin" @click="confirmPick">Use this spot</UButton>
+              <UButton color="neutral" variant="soft" size="xl" class="rounded-2xl px-5" @click="picking = false">{{ t('app.cancel') }}</UButton>
+              <UButton size="xl" block class="rounded-2xl" icon="i-lucide-map-pin" @click="confirmPick">{{ t('app.useSpot') }}</UButton>
             </div>
           </div>
         </motion.div>
@@ -115,17 +115,20 @@
           <div v-if="!draft && !selected && !area" class="px-5 pb-3">
             <div class="flex items-end justify-between">
               <div>
-                <h2 class="text-xl font-semibold tracking-tight">Your map</h2>
+                <h2 class="text-xl font-semibold tracking-tight">{{ t('app.yourMap') }}</h2>
                 <p class="text-sm text-(--ui-text-muted)">
-                  <AnimatedNumber :value="counts.been" /> been ·
-                  <AnimatedNumber :value="counts.planned" /> want to go
+                  <template v-for="(seg, i) in countSegments" :key="i">
+                    <AnimatedNumber v-if="seg === '{been}'" :value="counts.been" />
+                    <AnimatedNumber v-else-if="seg === '{planned}'" :value="counts.planned" />
+                    <template v-else>{{ seg }}</template>
+                  </template>
                 </p>
               </div>
               <button v-if="!standalone" class="flex items-center gap-1 rounded-full bg-(--ui-primary)/12 px-3 py-1.5 text-xs font-semibold text-(--ui-primary) active:scale-95 transition" @click="installOpen = true">
-                <UIcon name="i-lucide-download" class="size-3.5" /> Install app
+                <UIcon name="i-lucide-download" class="size-3.5" /> {{ t('app.installApp') }}
               </button>
               <button v-else class="flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold active:scale-95 transition" :class="online ? 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/15 text-amber-600'" @click="offlineOpen = true">
-                <UIcon :name="online ? 'i-lucide-cloud-check' : 'i-lucide-cloud-off'" class="size-3.5" /> {{ online ? 'Offline ready' : 'Offline' }}
+                <UIcon :name="online ? 'i-lucide-cloud-check' : 'i-lucide-cloud-off'" class="size-3.5" /> {{ online ? t('app.offlineReady') : t('app.offline') }}
               </button>
             </div>
             <div class="mt-3 flex gap-1.5">
@@ -159,7 +162,7 @@
             <DraftCard v-if="draft" :draft="draft" />
             <PlaceDetail v-else-if="selected" :place="selected" />
             <AreaCard v-else-if="area" :area="area" />
-            <PlaceList v-else @credits="creditsOpen = true" />
+            <PlaceList v-else />
           </motion.div>
         </AnimatePresence>
       </BottomSheet>
@@ -167,19 +170,6 @@
       <InstallSheet v-model:open="installOpen" />
       <MapStyleSheet v-model:open="styleOpen" />
       <OfflineSheet v-model:open="offlineOpen" />
-
-      <UModal v-model:open="creditsOpen" title="Map credits" description="Phaenti is built on open data and open-source software.">
-        <template #body>
-          <ul class="space-y-3 text-sm">
-            <li><b>Map data</b> © <a class="underline" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL)</li>
-            <li><b>Map tiles</b> <a class="underline" href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a>, <a class="underline" href="https://openmaptiles.org" target="_blank" rel="noopener">OpenMapTiles</a>; Colorful &amp; Natural styles by <a class="underline" href="https://versatiles.org" target="_blank" rel="noopener">VersaTiles</a></li>
-            <li><b>Cambodia boundaries</b> Open Development Cambodia (2014), via <a class="underline" href="https://www.geoboundaries.org" target="_blank" rel="noopener">geoBoundaries</a>, CC BY 4.0</li>
-            <li><b>Khmer names &amp; villages</b> <a class="underline" href="https://github.com/dwilkie/pumi" target="_blank" rel="noopener">Pumi</a> (MIT)</li>
-            <li><b>Place search</b> <a class="underline" href="https://photon.komoot.io" target="_blank" rel="noopener">Photon by komoot</a></li>
-            <li><b>Map engine</b> <a class="underline" href="https://maplibre.org" target="_blank" rel="noopener">MapLibre GL JS</a></li>
-          </ul>
-        </template>
-      </UModal>
 
       <input ref="fileInput" type="file" accept=".json,.geojson,application/json,application/geo+json" class="hidden" @change="onImport">
     </main>
@@ -191,16 +181,18 @@ import { motion, AnimatePresence } from 'motion-v'
 import type { DropdownMenuItem } from '@nuxt/ui'
 import type { Filter } from '~/composables/useAppState'
 import { isStandalone } from '~/composables/useOffline'
+import { en as uiEn, km as uiKm } from '@nuxt/ui/locale'
 
 const PEEK = 156
 const spring = { type: 'spring', stiffness: 420, damping: 38 } as const
 
 const { places, toExport, importFile } = usePlaces()
 const { selectedId, draft, area, picking, searching, filter, snap, mapApi, closeAll, showBoundaries, showExplored } = useAppState()
-const creditsOpen = ref(false)
 const colorMode = useColorMode()
 const toast = useToast()
 const { $pwa } = useNuxtApp()
+const { t, isKm, lang, setLang } = useLang()
+const countSegments = computed(() => t('app.countsLine').split(/(\{been\}|\{planned\})/).filter(Boolean))
 
 const mapView = ref<{ startDraft: (lng: number, lat: number, s: 'map' | 'location') => void }>()
 const moving = ref(false)
@@ -218,9 +210,9 @@ const counts = computed(() => {
 })
 
 const filters = computed<{ value: Filter; label: string }[]>(() => [
-  { value: 'all', label: `All ${places.value.length || ''}`.trim() },
-  { value: 'been', label: 'Been' },
-  { value: 'planned', label: 'Want to go' },
+  { value: 'all', label: `${t('app.all')} ${places.value.length || ''}`.trim() },
+  { value: 'been', label: t('app.been') },
+  { value: 'planned', label: t('app.wantToGo') },
 ])
 
 // If a selected place gets deleted elsewhere, fall back to the list
@@ -243,7 +235,7 @@ async function locate() {
   locating.value = true
   const pos = await mapApi.value?.locate()
   locating.value = false
-  if (!pos) toast.add({ title: 'Location unavailable', description: 'Allow location access in your browser settings.', icon: 'i-lucide-locate-off', color: 'warning' })
+  if (!pos) toast.add({ title: t('toast.locationOff'), description: t('toast.locationHint'), icon: 'i-lucide-locate-off', color: 'warning' })
 }
 
 // ---- Install ----
@@ -259,14 +251,14 @@ watch(() => $pwa?.needRefresh, (v) => {
   if (!v) return
   toast.add({
     id: 'update',
-    title: 'A new version of Phaenti is ready',
+    title: t('toast.updateReady'),
     icon: 'i-lucide-sparkles',
     duration: 0,
-    actions: [{ label: 'Update', color: 'primary', onClick: () => void $pwa?.updateServiceWorker(true) }],
+    actions: [{ label: t('toast.update'), color: 'primary', onClick: () => void $pwa?.updateServiceWorker(true) }],
   })
 }, { immediate: true })
 watch(() => $pwa?.offlineReady, (v) => {
-  if (v) toast.add({ title: 'Ready to work offline', description: 'The app, your places and Cambodia data are saved on this device.', icon: 'i-lucide-cloud-check', color: 'primary' })
+  if (v) toast.add({ title: t('toast.offlineReady'), description: t('toast.offlineReadyHint'), icon: 'i-lucide-cloud-check', color: 'primary' })
 }, { immediate: true })
 
 // Suggest installing once, after the first saved place
@@ -277,11 +269,11 @@ watch(() => places.value.length, (n, old) => {
     localStorage.setItem('phaenti:install-nudge', '1')
   } catch { return }
   setTimeout(() => toast.add({
-    title: 'Keep your map safe',
-    description: 'Install Phaenti so it works offline and your places are never cleared.',
+    title: t('toast.nudgeTitle'),
+    description: t('toast.nudgeBody'),
     icon: 'i-lucide-smartphone',
     duration: 8000,
-    actions: [{ label: 'Install', color: 'primary', onClick: () => (installOpen.value = true) }],
+    actions: [{ label: t('toast.install'), color: 'primary', onClick: () => (installOpen.value = true) }],
   }), 2600)
 })
 
@@ -302,7 +294,7 @@ async function exportBackup() {
   const a = Object.assign(document.createElement('a'), { href: url, download: name })
   a.click()
   setTimeout(() => URL.revokeObjectURL(url), 2000)
-  toast.add({ title: 'Backup saved', description: `${places.value.length} places`, icon: 'i-lucide-download' })
+  toast.add({ title: t('toast.backupSaved'), description: t('toast.placesCount', { n: places.value.length }), icon: 'i-lucide-download' })
 }
 
 async function onImport(e: Event) {
@@ -312,33 +304,40 @@ async function onImport(e: Event) {
   if (!file) return
   try {
     const r = await importFile(file)
-    toast.add({ title: 'Import complete', description: `${r.added} new, ${r.updated} updated`, icon: 'i-lucide-upload', color: 'primary' })
+    toast.add({ title: t('toast.importDone'), description: t('toast.importCounts', { added: r.added, updated: r.updated }), icon: 'i-lucide-upload', color: 'primary' })
     setTimeout(() => mapApi.value?.fitAll(), 200)
   } catch {
-    toast.add({ title: 'Could not read that file', description: 'Use a Phaenti backup or a GeoJSON file.', icon: 'i-lucide-file-x', color: 'error' })
+    toast.add({ title: t('toast.importFail'), description: t('toast.importFailHint'), icon: 'i-lucide-file-x', color: 'error' })
   }
 }
 
 const menu = computed<DropdownMenuItem[][]>(() => [
   [
-    ...(standalone.value ? [] : [{ label: 'Install app', icon: 'i-lucide-smartphone', onSelect: () => (installOpen.value = true) }]),
-    { label: 'Offline & storage', icon: 'i-lucide-cloud-download', onSelect: () => (offlineOpen.value = true) },
+    {
+      label: isKm.value ? 'English' : 'ភាសាខ្មែរ',
+      icon: 'i-lucide-languages',
+      kbds: [isKm.value ? 'EN' : 'KH'],
+      onSelect: () => setLang(isKm.value ? 'en' : 'km'),
+    },
   ],
   [
-    { label: 'Back up places', icon: 'i-lucide-download', onSelect: exportBackup, disabled: !places.value.length },
-    { label: 'Restore from file', icon: 'i-lucide-upload', onSelect: () => fileInput.value?.click() },
+    ...(standalone.value ? [] : [{ label: t('menu.install'), icon: 'i-lucide-smartphone', onSelect: () => (installOpen.value = true) }]),
+    { label: t('menu.offline'), icon: 'i-lucide-cloud-download', onSelect: () => (offlineOpen.value = true) },
   ],
   [
-    { label: 'Map style & layers', icon: 'i-lucide-layers', onSelect: () => (styleOpen.value = true) },
+    { label: t('menu.backup'), icon: 'i-lucide-download', onSelect: exportBackup, disabled: !places.value.length },
+    { label: t('menu.restore'), icon: 'i-lucide-upload', onSelect: () => fileInput.value?.click() },
+  ],
+  [
+    { label: t('menu.styles'), icon: 'i-lucide-layers', onSelect: () => (styleOpen.value = true) },
   ],
   [
     {
-      label: colorMode.value === 'dark' ? 'Light mode' : 'Dark mode',
+      label: colorMode.value === 'dark' ? t('menu.lightMode') : t('menu.darkMode'),
       icon: colorMode.value === 'dark' ? 'i-lucide-sun' : 'i-lucide-moon',
       onSelect: () => (colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'),
     },
-    { label: 'Add my current location', icon: 'i-lucide-map-pin-plus', onSelect: addHere },
-    { label: 'Map credits', icon: 'i-lucide-info', onSelect: () => (creditsOpen.value = true) },
+    { label: t('menu.addHere'), icon: 'i-lucide-map-pin-plus', onSelect: addHere },
   ],
 ])
 
@@ -347,7 +346,7 @@ async function addHere() {
   const pos = await mapApi.value?.locate()
   locating.value = false
   if (pos) mapView.value?.startDraft(pos.lng, pos.lat, 'location')
-  else toast.add({ title: 'Location unavailable', icon: 'i-lucide-locate-off', color: 'warning' })
+  else toast.add({ title: t('toast.locationOff'), icon: 'i-lucide-locate-off', color: 'warning' })
 }
 
 // Back button / Escape closes panels

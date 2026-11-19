@@ -17,7 +17,7 @@
         :transition="{ type: 'spring', stiffness: 500, damping: 36 }"
       />
       <UIcon :name="s.icon" class="size-4" />
-      {{ s.label }}
+      {{ t(s.key) }}
     </button>
   </div>
 </template>
@@ -28,8 +28,9 @@ import { STATUS_COLORS, type PlaceStatus } from '~/utils/db'
 
 const model = defineModel<PlaceStatus>({ required: true })
 const uid = useId()
+const { t } = useLang()
 const options = [
-  { value: 'been' as const, label: 'Been here', icon: 'i-lucide-check-circle-2' },
-  { value: 'planned' as const, label: 'Want to go', icon: 'i-lucide-bookmark' },
+  { value: 'been' as const, key: 'status.been', icon: 'i-lucide-check-circle-2' },
+  { value: 'planned' as const, key: 'status.planned', icon: 'i-lucide-bookmark' },
 ]
 </script>

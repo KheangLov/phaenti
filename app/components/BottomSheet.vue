@@ -11,7 +11,7 @@
       >
         <button
           class="mx-auto block py-2.5 px-6"
-          aria-label="Resize panel"
+          :aria-label="t('app.resize')"
           @click="cycle"
         >
           <span class="block h-1.5 w-10 rounded-full bg-(--ui-text-dimmed)/40" />
@@ -34,6 +34,7 @@ import { motion, useMotionValue, animate } from 'motion-v'
 import type { SheetSnap } from '~/composables/useAppState'
 
 const props = withDefaults(defineProps<{ hidden?: boolean; peek?: number }>(), { hidden: false, peek: 156 })
+const { t } = useLang()
 const snap = defineModel<SheetSnap>('snap', { default: 'peek' })
 
 const winH = ref(typeof window !== 'undefined' ? window.innerHeight : 800)

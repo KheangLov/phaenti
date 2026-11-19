@@ -90,7 +90,7 @@ export default defineNuxtConfig({
       navigateFallback: 'index.html',
       navigateFallbackDenylist: [/^\/admin\//],
       // App shell + Cambodia boundaries, names and search index: all available offline from first launch
-      globPatterns: ['**/*.{js,mjs,css,html,png,svg,ico,webmanifest}', 'admin/**/*.{json,pbf}', 'styles/*.json'],
+      globPatterns: ['**/*.{js,mjs,css,html,png,svg,ico,webmanifest,woff2}', 'admin/**/*.{json,pbf}', 'styles/*.json'],
       globIgnores: ['screenshots/**'],
       maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       cleanupOutdatedCaches: true,

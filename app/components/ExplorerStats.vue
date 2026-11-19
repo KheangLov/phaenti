@@ -13,17 +13,17 @@
 
     <div class="relative flex items-start justify-between gap-3">
       <div>
-        <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/70">Cambodia explored</p>
+        <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/70">{{ t('explorer.title') }}</p>
         <p class="mt-1 text-2xl font-bold tracking-tight">
           <AnimatedNumber :value="pct" />%
-          <span class="ml-1 text-sm font-medium text-white/75">of provinces</span>
+          <span class="ml-1 text-sm font-medium text-white/75">{{ t('explorer.ofProvinces') }}</span>
         </p>
       </div>
       <button
         class="flex items-center gap-1 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold backdrop-blur active:scale-95 transition"
         @click="showCambodia"
       >
-        <UIcon name="i-lucide-map" class="size-3.5" /> View
+        <UIcon name="i-lucide-map" class="size-3.5" /> {{ t('explorer.view') }}
       </button>
     </div>
 
@@ -52,11 +52,12 @@ import { motion } from 'motion-v'
 import { explored, ADMIN_TOTALS } from '~/composables/useAdmin'
 
 const { mapApi, showExplored } = useAppState()
+const { t } = useLang()
 
 const rows = computed(() => [
-  { label: 'Provinces', value: explored.value.provinces, total: ADMIN_TOTALS.provinces },
-  { label: 'Districts', value: explored.value.districts, total: ADMIN_TOTALS.districts },
-  { label: 'Communes', value: explored.value.communes, total: ADMIN_TOTALS.communes },
+  { label: t('explorer.provinces'), value: explored.value.provinces, total: ADMIN_TOTALS.provinces },
+  { label: t('explorer.districts'), value: explored.value.districts, total: ADMIN_TOTALS.districts },
+  { label: t('explorer.communes'), value: explored.value.communes, total: ADMIN_TOTALS.communes },
 ])
 const pct = computed(() => Math.round((explored.value.provinces / ADMIN_TOTALS.provinces) * 100))
 

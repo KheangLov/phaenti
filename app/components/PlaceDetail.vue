@@ -14,7 +14,7 @@
         <input
           :value="place.name"
           class="w-full bg-transparent text-xl font-semibold tracking-tight outline-none"
-          aria-label="Place name"
+          :aria-label="t('place.namePlaceholder')"
           @change="save({ name: ($event.target as HTMLInputElement).value.trim() || place.name })"
         >
         <p class="mt-0.5 truncate text-sm text-(--ui-text-muted)">{{ place.address || formatCoords(place.lat, place.lng) }}</p>
@@ -25,12 +25,12 @@
             class="inline-flex items-center gap-1 rounded-full bg-(--ui-bg-elevated) px-2 py-0.5 text-[11px] font-medium text-(--ui-text-muted) active:scale-95 transition"
             @click="goArea(a.code)"
           >
-            {{ a.name }}
+            {{ pick(a.name, a.km) }}
             <UIcon name="i-lucide-chevron-right" class="size-3" />
           </button>
         </div>
       </div>
-      <UButton icon="i-lucide-x" color="neutral" variant="soft" class="rounded-full" aria-label="Close" @click="select(null)" />
+      <UButton icon="i-lucide-x" color="neutral" variant="soft" class="rounded-full" :aria-label="t('place.close')" @click="select(null)" />
     </div>
 
     <div class="mt-4">
@@ -49,22 +49,22 @@
         class="flex flex-col items-center gap-1 rounded-2xl bg-(--ui-bg-elevated) py-3 text-xs font-medium active:scale-95 transition"
       >
         <UIcon name="i-lucide-navigation" class="size-5 text-sky-500" />
-        Directions
+        {{ t('place.directions') }}
       </a>
       <button class="flex flex-col items-center gap-1 rounded-2xl bg-(--ui-bg-elevated) py-3 text-xs font-medium active:scale-95 transition" @click="share">
         <UIcon name="i-lucide-share" class="size-5 text-(--ui-primary)" />
-        Share
+        {{ t('place.share') }}
       </button>
       <button class="flex flex-col items-center gap-1 rounded-2xl bg-(--ui-bg-elevated) py-3 text-xs font-medium active:scale-95 transition" @click="mapApi?.flyTo(place.lng, place.lat, 16)">
         <UIcon name="i-lucide-focus" class="size-5 text-amber-500" />
-        Zoom to
+        {{ t('place.zoomTo') }}
       </button>
     </div>
 
     <!-- Details -->
     <div class="mt-5 space-y-4">
       <div v-if="place.status === 'been'" class="flex items-center justify-between gap-3">
-        <label for="visited" class="text-sm font-medium text-(--ui-text-muted)">Visited on</label>
+        <label for="visited" class="text-sm font-medium text-(--ui-text-muted)">{{ t('place.visitedOn') }}</label>
         <input
           id="visited"
           type="date"
@@ -76,7 +76,7 @@
       </div>
 
       <div class="flex items-center justify-between gap-3">
-        <span class="text-sm font-medium text-(--ui-text-muted)">{{ place.status === 'been' ? 'Your rating' : 'How excited?' }}</span>
+        <span class="text-sm font-medium text-(--ui-text-muted)">{{ place.status === 'been' ? t('place.yourRating') : t('place.howExcited') }}</span>
         <div class="flex gap-0.5" role="radiogroup" aria-label="Rating">
           <motion.button
             v-for="n in 5"
@@ -103,19 +103,19 @@
       </div>
 
       <div>
-        <label for="notes" class="mb-1.5 block text-sm font-medium text-(--ui-text-muted)">Notes</label>
+        <label for="notes" class="mb-1.5 block text-sm font-medium text-(--ui-text-muted)">{{ t('place.notes') }}</label>
         <textarea
           id="notes"
           v-model="notes"
           rows="3"
-          placeholder="What made it special? What to order? Who recommended it?"
+          :placeholder="t('place.notesPlaceholder')"
           class="w-full resize-none rounded-2xl bg-(--ui-bg-elevated) px-3.5 py-3 text-[15px] outline-none placeholder:text-(--ui-text-dimmed) field-sizing-content min-h-24"
         />
       </div>
 
       <div class="flex items-center justify-between pt-2 text-xs text-(--ui-text-dimmed)">
         <span>{{ formatCoords(place.lat, place.lng) }}</span>
-        <span>Added {{ added }}</span>
+        <span>{{ t('place.added', { date: added }) }}</span>
       </div>
 
       <UButton
@@ -126,7 +126,7 @@
         class="rounded-2xl h-11"
         @click="del"
       >
-        Delete place
+        {{ t('place.delete') }}
       </UButton>
     </div>
   </div>
@@ -162,9 +162,10 @@ function setCategory(category: CategoryId) {
 }
 const mapApi = computed(() => mapApiRef.value)
 const toast = useToast()
+const { t, pick, locale } = useLang()
 
 const today = new Date().toISOString().slice(0, 10)
-const added = computed(() => new Date(props.place.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }))
+const added = computed(() => new Date(props.place.createdAt).toLocaleDateString(locale.value, { day: 'numeric', month: 'short', year: 'numeric' }))
 
 function save(patch: Partial<Place>) {
   return update(props.place.id, patch)
@@ -191,7 +192,7 @@ async function share() {
     if (navigator.share) await navigator.share({ title: p.name, text, url })
     else {
       await navigator.clipboard.writeText(`${text}\n${url}`)
-      toast.add({ title: 'Link copied', icon: 'i-lucide-copy', duration: 1800 })
+      toast.add({ title: t('toast.linkCopied'), icon: 'i-lucide-copy', duration: 1800 })
     }
   } catch { /* user cancelled */ }
 }
@@ -201,10 +202,10 @@ async function del() {
   select(null)
   if (!old) return
   toast.add({
-    title: `Deleted “${old.name}”`,
+    title: t('toast.deleted', { name: old.name }),
     icon: 'i-lucide-trash-2',
     duration: 5000,
-    actions: [{ label: 'Undo', color: 'neutral', variant: 'outline', onClick: () => restore(old) }],
+    actions: [{ label: t('toast.undo'), color: 'neutral', variant: 'outline', onClick: () => restore(old) }],
   })
 }
 </script>

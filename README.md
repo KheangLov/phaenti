@@ -43,6 +43,12 @@ shown network address from a phone on the same Wi-Fi.
 - Map tiles you view are cached automatically; menu → Offline & storage can save "this area in detail" or a Cambodia overview (zoom 5–10)
 - Asks before applying updates; requests persistent storage when installed
 
+## Languages
+
+English and Khmer (ភាសាខ្មែរ): menu (…) → ភាសាខ្មែរ / English. Defaults to Khmer when the phone is set to Khmer,
+and remembers your choice. All app text lives in `app/i18n/messages.ts`; Cambodian area names switch to
+their Khmer form, and Noto Sans Khmer is bundled so Khmer looks the same on every phone, offline too.
+
 ## Map styles
 
 Layers button → 12 looks with live previews: Auto (follows light/dark), Liberty, Positron, Bright,

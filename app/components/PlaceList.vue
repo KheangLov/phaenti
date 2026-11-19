@@ -11,10 +11,9 @@
       >
         <UIcon name="i-lucide-map-pinned" class="size-9" />
       </motion.div>
-      <h3 class="mt-5 text-lg font-semibold">Start your map</h3>
+      <h3 class="mt-5 text-lg font-semibold">{{ t('list.emptyTitle') }}</h3>
       <p class="mt-1.5 max-w-xs text-sm text-(--ui-text-muted)">
-        Long-press anywhere on the map, tap <b>+</b>, or search for a place to save it.
-        Tap a province to explore it.
+        {{ t('list.emptyBody') }}
       </p>
     </div>
 
@@ -49,15 +48,12 @@
     </TransitionGroup>
 
     <div v-if="places.length && !visible.length" class="py-8 text-center text-sm text-(--ui-text-muted)">
-      Nothing here yet.
+      {{ t('list.nothing') }}
     </div>
     <button v-if="filtered.length > limit" class="mt-2 w-full rounded-xl py-2.5 text-sm font-medium text-(--ui-primary)" @click="limit += 100">
-      Show {{ Math.min(100, filtered.length - limit) }} more
+      {{ t('list.showMore', { n: Math.min(100, filtered.length - limit) }) }}
     </button>
 
-    <button class="mt-6 block w-full text-center text-[11px] text-(--ui-text-dimmed)" @click="$emit('credits')">
-      © OpenStreetMap contributors · OpenFreeMap · ODC · Map credits
-    </button>
   </div>
 </template>
 
@@ -68,11 +64,10 @@ import { categoryOf } from '~/utils/categories'
 import { pinDataUrl } from '~/utils/pins'
 import { placeAdmin } from '~/composables/useAdmin'
 
-defineEmits<{ credits: [] }>()
-
 const { places, ready } = usePlaces()
 const { filter, select, mapApi } = useAppState()
 const admin = useAdmin()
+const { t, pick, catLabel, locale } = useLang()
 
 const limit = ref(100)
 watch(filter, () => (limit.value = 100))
@@ -81,8 +76,8 @@ const visible = computed(() => filtered.value.slice(0, limit.value))
 
 function subtitle(p: Place) {
   const a = placeAdmin.value.get(p.id)
-  const where = a ? [admin.area(a.d)?.name, admin.area(a.p)?.name].filter(Boolean).join(', ') : ''
-  return [categoryOf(p.category).label, where || p.address || formatCoords(p.lat, p.lng)].filter(Boolean).join(' · ')
+  const where = a ? [admin.area(a.d), admin.area(a.p)].filter(Boolean).map(x => pick(x!.name, x!.km)).join(', ') : ''
+  return [catLabel(p.category, categoryOf(p.category).label), where || p.address || formatCoords(p.lat, p.lng)].filter(Boolean).join(' · ')
 }
 
 function open(p: Place) {
@@ -91,6 +86,6 @@ function open(p: Place) {
 }
 
 function shortDate(d: string) {
-  return new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+  return new Date(`${d}T00:00:00`).toLocaleDateString(locale.value, { month: 'short', year: 'numeric' })
 }
 </script>

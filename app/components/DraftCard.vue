@@ -15,15 +15,15 @@
           v-model="name"
           class="w-full bg-transparent text-xl font-semibold tracking-tight outline-none placeholder:text-(--ui-text-dimmed)"
           :class="draft.loading ? 'animate-pulse' : ''"
-          placeholder="Name this place"
-          aria-label="Place name"
+          :placeholder="t('place.namePlaceholder')"
+          :aria-label="t('place.namePlaceholder')"
         >
         <p class="mt-0.5 truncate text-sm text-(--ui-text-muted)">{{ draft.address }}</p>
         <p v-if="where" class="mt-0.5 flex items-center gap-1 truncate text-xs text-(--ui-text-dimmed)">
           <UIcon name="i-lucide-map" class="size-3.5 shrink-0" />{{ where }}
         </p>
       </div>
-      <UButton icon="i-lucide-x" color="neutral" variant="soft" class="rounded-full" aria-label="Discard" @click="closeAll" />
+      <UButton icon="i-lucide-x" color="neutral" variant="soft" class="rounded-full" :aria-label="t('place.discard')" @click="closeAll" />
     </div>
 
     <div class="mt-4">
@@ -43,14 +43,14 @@
         @click="save(s.status)"
       >
         <UIcon :name="s.icon" class="size-5" />
-        {{ s.label }}
+        {{ t(s.key) }}
       </motion.button>
     </div>
 
     <div class="mt-4 flex items-center justify-between text-xs text-(--ui-text-dimmed)">
       <span>{{ formatCoords(draft.lat, draft.lng) }}</span>
       <a :href="googleMapsUrl(draft.lat, draft.lng)" target="_blank" rel="noopener" class="inline-flex items-center gap-1 font-medium text-(--ui-text-muted)">
-        Open in Google Maps <UIcon name="i-lucide-arrow-up-right" class="size-3.5" />
+        {{ t('place.openGoogle') }} <UIcon name="i-lucide-arrow-up-right" class="size-3.5" />
       </a>
     </div>
   </div>
@@ -68,6 +68,7 @@ const { add } = usePlaces()
 const { closeAll, select, mapApi, draft: draftRef } = useAppState()
 const admin = useAdmin()
 const toast = useToast()
+const { t, pick } = useLang()
 
 const name = ref(props.draft.name)
 const category = ref<CategoryId>(props.draft.category ?? 'other')
@@ -83,20 +84,20 @@ watch(category, (v) => {
 const where = computed(() => {
   const a = admin.lookupReady.value ? admin.locate(props.draft.lat, props.draft.lng) : null
   if (!a) return ''
-  return [admin.area(a.c)?.name, admin.area(a.d)?.name, admin.area(a.p)?.name].filter(Boolean).join(' · ')
+  return [admin.area(a.c), admin.area(a.d), admin.area(a.p)].filter(Boolean).map(x => pick(x!.name, x!.km)).join(' · ')
 })
 
 const actions = [
-  { status: 'been' as const, label: 'Been here', icon: 'i-lucide-check-circle-2' },
-  { status: 'planned' as const, label: 'Want to go', icon: 'i-lucide-heart' },
+  { status: 'been' as const, key: 'status.been', icon: 'i-lucide-check-circle-2' },
+  { status: 'planned' as const, key: 'status.planned', icon: 'i-lucide-heart' },
 ]
 
 async function save(status: PlaceStatus) {
   const d = props.draft
-  const p = await add({ name: name.value, address: d.address, lat: d.lat, lng: d.lng, status, category: category.value, source: d.source })
+  const p = await add({ name: name.value || t('place.untitled'), address: d.address, lat: d.lat, lng: d.lng, status, category: category.value, source: d.source })
   mapApi.value?.pulse(p.lng, p.lat, categoryOf(p.category).color)
   if (navigator.vibrate) navigator.vibrate([8, 40, 8])
   select(p.id)
-  toast.add({ title: status === 'been' ? 'Added to places you’ve been' : 'Added to your wishlist', icon: 'i-lucide-map-pin-check', color: status === 'been' ? 'primary' : 'secondary', duration: 2200 })
+  toast.add({ title: status === 'been' ? t('toast.addedBeen') : t('toast.addedPlanned'), icon: 'i-lucide-map-pin-check', color: status === 'been' ? 'primary' : 'secondary', duration: 2200 })
 }
 </script>

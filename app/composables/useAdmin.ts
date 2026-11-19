@@ -29,7 +29,9 @@ export interface AdminHit {
   name: string
   km: string
   unit: string
+  unitKm: string
   sub: string
+  subKm: string
   score: number
 }
 
@@ -43,9 +45,11 @@ const lookup = shallowRef<LookupRow[] | null>(null)
 let indexP: Promise<void> | null = null
 let lookupP: Promise<void> | null = null
 
-interface Entry { code: string; level: 1 | 2 | 3 | 4; en: string; n: string; km: string; unit: string }
+interface Entry { code: string; level: 1 | 2 | 3 | 4; en: string; n: string; km: string; unit: string; unitKm: string }
 let entries: Entry[] = []
 const names = new Map<string, string>()
+const namesKm = new Map<string, string>()
+export const UNIT_KM: Record<number, string> = { 1: 'ខេត្ត', 2: 'ស្រុក', 3: 'ឃុំ', 4: 'ភូមិ' }
 
 const strip = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
@@ -56,14 +60,16 @@ function loadIndex() {
       const list: Entry[] = []
       for (const [code, a] of Object.entries(d.areas)) {
         names.set(code, a[1])
-        list.push({ code, level: a[0] as 1 | 2 | 3, en: a[1], n: strip(a[1]), km: a[2], unit: a[3] || LEVEL_LABEL[a[0]]! })
+        if (a[2]) namesKm.set(code, a[2])
+        list.push({ code, level: a[0] as 1 | 2 | 3, en: a[1], n: strip(a[1]), km: a[2], unit: a[3] || LEVEL_LABEL[a[0]]!, unitKm: a[4] || UNIT_KM[a[0]]! })
       }
-      for (const [code, level, en, km, unitEn] of d.extra) {
+      for (const [code, level, en, km, unitEn, unitKm] of d.extra) {
         if (!names.has(code)) names.set(code, en)
-        list.push({ code, level: level as 2 | 3, en, n: strip(en), km, unit: unitEn || LEVEL_LABEL[level]! })
+        if (km && !namesKm.has(code)) namesKm.set(code, km)
+        list.push({ code, level: level as 2 | 3, en, n: strip(en), km, unit: unitEn || LEVEL_LABEL[level]!, unitKm: unitKm || UNIT_KM[level]! })
       }
       for (const [code, en, km] of d.villages) {
-        list.push({ code, level: 4, en, n: strip(en), km, unit: 'Village' })
+        list.push({ code, level: 4, en, n: strip(en), km, unit: 'Village', unitKm: 'ភូមិ' })
       }
       entries = list
       index.value = d
@@ -147,8 +153,8 @@ function children(code: string): AreaInfo[] {
   return out.sort((a, b) => a.name.localeCompare(b.name))
 }
 
-function chain(code: string, level: number): string {
-  return parentsOf(code, level).map(c => names.get(c)).filter(Boolean).join(', ')
+function chain(code: string, level: number, khmer = false): string {
+  return parentsOf(code, level).map(c => (khmer ? namesKm.get(c) ?? names.get(c) : names.get(c))).filter(Boolean).join(khmer ? ' · ' : ', ')
 }
 
 function search(q: string, limit = 8): AdminHit[] {
@@ -170,7 +176,7 @@ function search(q: string, limit = 8): AdminHit[] {
     }
     if (score < 0 && score !== -5) continue
     score += e.level * 3
-    out.push({ code: e.code, level: e.level, name: e.en, km: e.km, unit: e.unit, sub: chain(e.code, e.level), score })
+    out.push({ code: e.code, level: e.level, name: e.en, km: e.km, unit: e.unit, unitKm: e.unitKm, sub: chain(e.code, e.level), subKm: chain(e.code, e.level, true), score })
   }
   out.sort((a, b) => a.score - b.score || a.name.length - b.name.length)
   return out.slice(0, limit)

@@ -1,6 +1,6 @@
 <template>
   <div class="px-5 pt-1 pb-6">
-    <div v-if="!info" class="py-10 text-center text-sm text-(--ui-text-muted)">Loading area…</div>
+    <div v-if="!info" class="py-10 text-center text-sm text-(--ui-text-muted)">{{ t('area.loading') }}</div>
 
     <template v-else>
       <!-- Title -->
@@ -10,12 +10,13 @@
         </div>
         <div class="min-w-0 flex-1">
           <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-(--ui-text-dimmed)">
-            <span v-if="unitKm" class="mr-1 normal-case tracking-normal">{{ unitKm }} ·</span>{{ unitEn }}
+            <template v-if="isKm">{{ unitKm || unitEn }}</template>
+            <template v-else><span v-if="unitKm" class="mr-1 normal-case tracking-normal">{{ unitKm }} ·</span>{{ unitEn }}</template>
           </p>
-          <h2 class="truncate text-xl font-semibold leading-tight tracking-tight">{{ title }}</h2>
-          <p v-if="titleKm" class="truncate text-base text-(--ui-text-muted)" lang="km">{{ titleKm }}</p>
+          <h2 class="truncate text-xl font-semibold leading-tight tracking-tight">{{ isKm && titleKm ? titleKm : title }}</h2>
+          <p v-if="titleKm" class="truncate text-base text-(--ui-text-muted)">{{ isKm ? title : titleKm }}</p>
         </div>
-        <UButton icon="i-lucide-x" color="neutral" variant="soft" class="rounded-full" aria-label="Close" @click="select(null)" />
+        <UButton icon="i-lucide-x" color="neutral" variant="soft" class="rounded-full" :aria-label="t('place.close')" @click="select(null)" />
       </div>
 
       <!-- Breadcrumb -->
@@ -23,7 +24,7 @@
         <template v-for="(c, i) in crumbs" :key="c.code">
           <UIcon v-if="i" name="i-lucide-chevron-right" class="size-3 text-(--ui-text-dimmed)" />
           <button class="rounded-full bg-(--ui-bg-elevated) px-2.5 py-1 font-medium text-(--ui-text-muted) active:scale-95 transition" @click="go(c.code)">
-            {{ c.name }}
+            {{ pick(c.name, c.km) }}
           </button>
         </template>
       </div>
@@ -32,21 +33,21 @@
       <div class="mt-4 grid grid-cols-3 gap-2">
         <div class="rounded-2xl bg-(--ui-bg-elevated) p-3">
           <p class="text-xl font-bold tabular-nums"><AnimatedNumber :value="stats.all" /></p>
-          <p class="text-[11px] font-medium text-(--ui-text-muted)">Your places</p>
+          <p class="text-[11px] font-medium text-(--ui-text-muted)">{{ t('area.yourPlaces') }}</p>
         </div>
         <div class="rounded-2xl bg-emerald-500/10 p-3">
           <p class="text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400"><AnimatedNumber :value="stats.been" /></p>
-          <p class="text-[11px] font-medium text-(--ui-text-muted)">Been</p>
+          <p class="text-[11px] font-medium text-(--ui-text-muted)">{{ t('area.been') }}</p>
         </div>
         <div v-if="kids.length" class="rounded-2xl bg-violet-500/10 p-3">
           <p class="text-xl font-bold tabular-nums text-violet-600 dark:text-violet-400">
             <AnimatedNumber :value="kidsExplored" /><span class="text-xs font-medium text-(--ui-text-dimmed)">/{{ kids.length }}</span>
           </p>
-          <p class="text-[11px] font-medium text-(--ui-text-muted)">{{ kidLabel }} explored</p>
+          <p class="text-[11px] font-medium text-(--ui-text-muted)">{{ t('area.explored', { what: kidLabel }) }}</p>
         </div>
         <div v-else class="rounded-2xl bg-violet-500/10 p-3">
           <p class="text-xl font-bold tabular-nums text-violet-600 dark:text-violet-400"><AnimatedNumber :value="stats.all - stats.been" /></p>
-          <p class="text-[11px] font-medium text-(--ui-text-muted)">Want to go</p>
+          <p class="text-[11px] font-medium text-(--ui-text-muted)">{{ t('area.wantToGo') }}</p>
         </div>
       </div>
 
@@ -54,15 +55,15 @@
       <div class="mt-3 grid grid-cols-3 gap-2">
         <button class="flex flex-col items-center gap-1 rounded-2xl bg-(--ui-bg-elevated) py-3 text-xs font-medium active:scale-95 transition" @click="zoom">
           <UIcon name="i-lucide-scan" class="size-5 text-violet-500" />
-          Zoom to
+          {{ t('area.zoomTo') }}
         </button>
         <button v-if="area.village" class="flex flex-col items-center gap-1 rounded-2xl bg-(--ui-bg-elevated) py-3 text-xs font-medium active:scale-95 transition" @click="findVillage">
           <UIcon :name="finding ? 'i-lucide-loader-circle' : 'i-lucide-search'" class="size-5 text-sky-500" :class="finding ? 'animate-spin' : ''" />
-          Find village
+          {{ t('area.findVillage') }}
         </button>
         <button v-else class="flex flex-col items-center gap-1 rounded-2xl bg-(--ui-bg-elevated) py-3 text-xs font-medium active:scale-95 transition" @click="addHere">
           <UIcon name="i-lucide-map-pin-plus" class="size-5 text-emerald-500" />
-          Add place
+          {{ t('area.addPlace') }}
         </button>
         <a
           v-if="info.wiki"
@@ -72,7 +73,7 @@
           class="flex flex-col items-center gap-1 rounded-2xl bg-(--ui-bg-elevated) py-3 text-xs font-medium active:scale-95 transition"
         >
           <UIcon name="i-lucide-book-open" class="size-5 text-amber-500" />
-          Wikipedia
+          {{ t('area.wikipedia') }}
         </a>
         <a
           v-else
@@ -82,13 +83,13 @@
           class="flex flex-col items-center gap-1 rounded-2xl bg-(--ui-bg-elevated) py-3 text-xs font-medium active:scale-95 transition"
         >
           <UIcon name="i-lucide-navigation" class="size-5 text-sky-500" />
-          Google Maps
+          {{ t('area.googleMaps') }}
         </a>
       </div>
 
       <!-- Your places here -->
       <div v-if="here.length" class="mt-5">
-        <h3 class="mb-1 text-sm font-semibold">Your places here</h3>
+        <h3 class="mb-1 text-sm font-semibold">{{ t('area.placesHere') }}</h3>
         <ul class="-mx-2">
           <li v-for="p in here.slice(0, 6)" :key="p.id">
             <button class="flex w-full items-center gap-3 rounded-2xl px-2 py-1.5 text-left active:bg-(--ui-bg-elevated)" @click="openPlace(p)">
@@ -98,7 +99,7 @@
             </button>
           </li>
         </ul>
-        <p v-if="here.length > 6" class="px-1 text-xs text-(--ui-text-dimmed)">+{{ here.length - 6 }} more</p>
+        <p v-if="here.length > 6" class="px-1 text-xs text-(--ui-text-dimmed)">{{ t('area.more', { n: here.length - 6 }) }}</p>
       </div>
 
       <!-- Children grid -->
@@ -116,14 +117,11 @@
             @click="go(k.code)"
           >
             <span class="size-1.5 rounded-full" :class="beenIn(k.code) ? 'bg-emerald-500' : 'bg-(--ui-text-dimmed)/40'" />
-            {{ k.name }}
+            {{ pick(k.name, k.km) }}
           </motion.button>
         </div>
       </div>
 
-      <p class="mt-6 text-[11px] text-(--ui-text-dimmed)">
-        Boundaries: Open Development Cambodia (2014), CC BY 4.0 · Names: Pumi
-      </p>
     </template>
   </div>
 </template>
@@ -140,6 +138,7 @@ const { select, openArea, openDraft, mapApi, picking, snap } = useAppState()
 const { places } = usePlaces()
 const admin = useAdmin()
 const toast = useToast()
+const { t, isKm, pick } = useLang()
 
 onMounted(() => admin.loadIndex().catch(() => {}))
 
@@ -169,7 +168,7 @@ const stats = computed(() => ({
 }))
 
 const kids = computed(() => (props.area.village ? [] : admin.children(props.area.code)))
-const kidLabel = computed(() => (level.value === 1 ? 'Districts' : 'Communes'))
+const kidLabel = computed(() => (level.value === 1 ? t('explorer.districts') : t('explorer.communes')))
 const beenIn = (code: string) => (adminCounts.value.been.get(code) ?? 0) > 0
 const kidsExplored = computed(() => kids.value.filter(k => beenIn(k.code)).length)
 
@@ -211,14 +210,14 @@ async function findVillage() {
     const pad = 0.03
     const hit = res.find(r => r.lng >= b[0] - pad && r.lng <= b[2] + pad && r.lat >= b[1] - pad && r.lat <= b[3] + pad)
     if (hit) {
-      openDraft({ name: `${v.name} village`, category: 'other', address: `${a.name}, ${prov}`, lat: hit.lat, lng: hit.lng, source: 'search' })
+      openDraft({ name: t('area.villageName', { name: isKm.value && v.km ? v.km : v.name }), category: 'other', address: `${a.name}, ${prov}`, lat: hit.lat, lng: hit.lng, source: 'search' })
       mapApi.value?.flyTo(hit.lng, hit.lat, 15)
     } else {
-      toast.add({ title: 'Village not on the map yet', description: `Showing ${a.name} ${a.unitEn.toLowerCase()} instead.`, icon: 'i-lucide-map', color: 'warning' })
+      toast.add({ title: t('area.notOnMap'), description: t('area.notOnMapHint', { name: isKm.value ? `${a.unitKm}${a.km}` : `${a.name} ${a.unitEn.toLowerCase()}` }), icon: 'i-lucide-map', color: 'warning' })
       zoom()
     }
   } catch {
-    toast.add({ title: 'Search is unavailable', description: 'Check your connection.', icon: 'i-lucide-wifi-off', color: 'warning' })
+    toast.add({ title: t('area.searchDown'), description: t('area.checkConnection'), icon: 'i-lucide-wifi-off', color: 'warning' })
   } finally {
     finding.value = false
   }

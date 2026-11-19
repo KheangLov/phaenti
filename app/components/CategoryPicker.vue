@@ -18,7 +18,7 @@
           :transition="{ type: 'spring', stiffness: 520, damping: 36 }"
         />
         <UIcon :name="`i-lucide-${c.icon}`" class="relative size-4" :style="model === c.id ? undefined : { color: c.color }" />
-        <span class="relative">{{ c.label }}</span>
+        <span class="relative">{{ catLabel(c.id, c.label) }}</span>
       </button>
     </div>
   </div>
@@ -30,6 +30,7 @@ import { CATEGORIES, type CategoryId } from '~/utils/categories'
 
 const model = defineModel<CategoryId>({ required: true })
 const uid = useId()
+const { catLabel } = useLang()
 
 function pick(id: CategoryId) {
   model.value = id

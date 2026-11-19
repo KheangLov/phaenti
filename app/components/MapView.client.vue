@@ -10,7 +10,7 @@
       <div v-if="!loaded" class="pointer-events-none absolute inset-0 grid place-items-center bg-(--ui-bg-muted)">
         <div class="flex flex-col items-center gap-3 text-(--ui-text-muted)">
           <div class="size-10 rounded-full border-2 border-current border-t-transparent animate-spin" />
-          <span class="text-sm">Loading map…</span>
+          <span class="text-sm">{{ t('app.loadingMap') }}</span>
         </div>
       </div>
     </Transition>
@@ -34,6 +34,7 @@ const { places } = usePlaces()
 const { selectedId, draft, area, filter, mapApi, picking, showBoundaries, showExplored, select, openDraft, openArea } = useAppState()
 const colorMode = useColorMode()
 const emit = defineEmits<{ moving: [boolean] }>()
+const { t } = useLang()
 
 let map: MLMap | null = null
 let ml: typeof import('maplibre-gl') | null = null
@@ -651,7 +652,7 @@ function offlineInfo(): OfflineInfo | null {
 
 let geoAbort: AbortController | null = null
 async function startDraft(lng: number, lat: number, source: 'map' | 'location', category: CategoryId = 'other') {
-  openDraft({ name: 'Dropped pin', category, address: formatCoords(lat, lng), lat, lng, source, loading: true })
+  openDraft({ name: t('place.droppedPin'), category, address: formatCoords(lat, lng), lat, lng, source, loading: true })
   flyTo(lng, lat)
   geoAbort?.abort()
   geoAbort = new AbortController()
@@ -659,7 +660,7 @@ async function startDraft(lng: number, lat: number, source: 'map' | 'location', 
   if (draft.value && draft.value.lat === lat && draft.value.lng === lng) {
     draft.value = {
       ...draft.value,
-      name: r?.name ?? 'Dropped pin',
+      name: r?.name ?? t('place.droppedPin'),
       category: draft.value.category !== 'other' ? draft.value.category : (r?.category ?? 'other'),
       address: r?.subtitle || formatCoords(lat, lng),
       loading: false,

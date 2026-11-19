@@ -1,5 +1,5 @@
 <template>
-  <UDrawer v-model:open="open" title="Map style" description="Pick a look. Your pins and Cambodia layers work on every style.">
+  <UDrawer v-model:open="open" :title="t('styles.title')" :description="t('styles.desc')">
     <template #body>
       <div class="pb-safe">
         <div class="grid grid-cols-3 gap-2.5">
@@ -34,28 +34,27 @@
                 <UIcon name="i-lucide-check" class="size-3.5" />
               </span>
               <span v-if="s.tag" class="absolute bottom-1.5 left-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide backdrop-blur" :class="s.dark ? 'bg-white/20 text-white' : 'bg-black/45 text-white'">
-                {{ s.tag }}
+                {{ s.id === 'auto' ? t('styles.tagAuto') : styleTag(s.id, s.tag) }}
               </span>
             </div>
-            <p class="mt-1.5 truncate px-0.5 text-[13px] font-medium" :class="styleChoice === s.id ? 'text-(--ui-primary)' : ''">{{ s.label }}</p>
+            <p class="mt-1.5 truncate px-0.5 text-[13px] font-medium" :class="styleChoice === s.id ? 'text-(--ui-primary)' : ''">{{ s.id === 'auto' ? t('styles.auto') : styleLabel(s.id, s.label) }}</p>
           </motion.button>
         </div>
 
         <div class="mt-5 divide-y divide-(--ui-border) overflow-hidden rounded-2xl border border-(--ui-border)">
           <label class="flex items-center gap-3 px-4 py-3">
             <UIcon name="i-lucide-square-dashed" class="size-5 text-violet-500" />
-            <span class="flex-1 text-sm">Cambodia boundaries</span>
+            <span class="flex-1 text-sm">{{ t('styles.boundaries') }}</span>
             <USwitch v-model="showBoundaries" />
           </label>
           <label class="flex items-center gap-3 px-4 py-3">
             <UIcon name="i-lucide-sparkles" class="size-5 text-emerald-500" />
-            <span class="flex-1 text-sm">Explored areas glow</span>
+            <span class="flex-1 text-sm">{{ t('styles.explored') }}</span>
             <USwitch v-model="showExplored" />
           </label>
         </div>
 
-        <p class="mt-4 text-center text-[11px] text-(--ui-text-dimmed)">{{ current.credit }}</p>
-        <p v-if="current.extrude" class="mt-1 text-center text-[11px] text-(--ui-text-muted)">Tip: twist with two fingers to rotate, drag up with two fingers to tilt.</p>
+        <p v-if="current.extrude" class="mt-1 text-center text-[11px] text-(--ui-text-muted)">{{ t('styles.tip3d') }}</p>
       </div>
     </template>
   </UDrawer>
@@ -69,6 +68,7 @@ import { WHITE } from '~/utils/colors'
 const open = defineModel<boolean>('open', { default: false })
 const { styleChoice, showBoundaries, showExplored } = useAppState()
 const colorMode = useColorMode()
+const { t, styleLabel, styleTag } = useLang()
 
 const cards = computed(() => [
   { id: AUTO_STYLE, label: 'Auto', tag: 'Light/Dark', dark: false, extrude: false, swatch: styleById('liberty').swatch },

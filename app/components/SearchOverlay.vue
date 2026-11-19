@@ -31,7 +31,7 @@
               v-if="open"
               key="back"
               class="-ml-1 grid size-8 shrink-0 place-items-center rounded-full text-(--ui-text-muted)"
-              aria-label="Back"
+              :aria-label="t('search.back')"
               :initial="{ opacity: 0, rotate: -90 }"
               :animate="{ opacity: 1, rotate: 0 }"
               :exit="{ opacity: 0, rotate: 90 }"
@@ -71,10 +71,10 @@
           >
           <div v-if="loading" class="mr-1 size-4 shrink-0 rounded-full border-2 border-(--ui-primary) border-t-transparent animate-spin" />
           <Transition enter-from-class="opacity-0 scale-75" leave-to-class="opacity-0 scale-75" enter-active-class="transition duration-150" leave-active-class="transition duration-100">
-            <button v-if="q || quick" class="grid size-9 shrink-0 place-items-center rounded-full text-(--ui-text-muted) active:scale-90 transition" aria-label="Clear" @mousedown.prevent @click="clear">
+            <button v-if="q || quick" class="grid size-9 shrink-0 place-items-center rounded-full text-(--ui-text-muted) active:scale-90 transition" :aria-label="t('search.clear')" @mousedown.prevent @click="clear">
               <UIcon name="i-lucide-x" class="size-4.5" />
             </button>
-            <button v-else-if="!open" class="grid size-9 shrink-0 place-items-center rounded-full text-(--ui-text-muted) active:scale-90 transition" aria-label="Paste" @click="pasteFromClipboard">
+            <button v-else-if="!open" class="grid size-9 shrink-0 place-items-center rounded-full text-(--ui-text-muted) active:scale-90 transition" :aria-label="t('search.paste')" @click="pasteFromClipboard">
               <UIcon name="i-lucide-clipboard-paste" class="size-4.5" />
             </button>
           </Transition>
@@ -96,7 +96,7 @@
           <!-- Idle: shortcuts, recents, provinces -->
           <template v-if="!q.trim() && !quick">
             <section class="mt-1">
-              <h3 class="section">Nearby</h3>
+              <h3 class="section">{{ t('search.nearby') }}</h3>
               <div class="-mx-3 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <div class="grid w-max grid-flow-col grid-rows-2 gap-2">
                   <motion.button
@@ -111,7 +111,7 @@
                     <span class="grid size-8 place-items-center rounded-xl text-white" :style="{ background: `linear-gradient(135deg, ${cat(c.id).color}, ${cat(c.id).color2})` }">
                       <UIcon :name="`i-lucide-${cat(c.id).icon}`" class="size-4.5" />
                     </span>
-                    {{ c.label }}
+                    {{ quickLabel(c.id, c.label) }}
                   </motion.button>
                 </div>
               </div>
@@ -119,15 +119,15 @@
 
             <section v-if="recents.length" class="mt-5">
               <div class="flex items-center justify-between">
-                <h3 class="section">Recent</h3>
-                <button class="px-1 text-xs font-medium text-(--ui-text-muted)" @click="clearRecents">Clear</button>
+                <h3 class="section">{{ t('search.recent') }}</h3>
+                <button class="px-1 text-xs font-medium text-(--ui-text-muted)" @click="clearRecents">{{ t('search.clearRecent') }}</button>
               </div>
               <div class="card">
                 <button v-for="(r, i) in recents" :key="i" class="row" @click="runRecent(r)">
                   <span class="icon bg-(--ui-bg-elevated) text-(--ui-text-muted)"><UIcon name="i-lucide-history" class="size-4.5" /></span>
                   <span class="min-w-0 flex-1">
-                    <span class="block truncate text-[15px] font-medium">{{ r.title }}</span>
-                    <span v-if="r.subtitle" class="block truncate text-[13px] text-(--ui-text-muted)">{{ r.subtitle }}</span>
+                    <span class="block truncate text-[15px] font-medium">{{ isKm && r.km ? r.km : r.title }}</span>
+                    <span v-if="r.subtitle" class="block truncate text-[13px] text-(--ui-text-muted)">{{ isKm && r.subKm ? r.subKm : r.subtitle }}</span>
                   </span>
                   <UIcon name="i-lucide-arrow-up-left" class="size-4 text-(--ui-text-dimmed)" />
                 </button>
@@ -135,7 +135,7 @@
             </section>
 
             <section v-if="provinces.length" class="mt-5">
-              <h3 class="section">Explore Cambodia</h3>
+              <h3 class="section">{{ t('search.explore') }}</h3>
               <div class="flex flex-wrap gap-1.5">
                 <button
                   v-for="p in provinces"
@@ -144,14 +144,14 @@
                   :class="(adminCounts.been.get(p.code) ?? 0) ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'border-(--ui-border) bg-(--ui-bg)/60'"
                   @click="goArea(p.code)"
                 >
-                  {{ p.name }}
-                  <span class="text-(--ui-text-dimmed)" lang="km">{{ p.km }}</span>
+                  <template v-if="isKm"><span lang="km">{{ p.km }}</span><span class="text-(--ui-text-dimmed)">{{ p.name }}</span></template>
+                  <template v-else>{{ p.name }}<span class="text-(--ui-text-dimmed)" lang="km">{{ p.km }}</span></template>
                 </button>
               </div>
             </section>
 
             <p class="mt-6 px-1 text-center text-xs text-(--ui-text-dimmed)">
-              Tip: paste a Google Maps link or coordinates like <span class="font-mono">11.5564, 104.9282</span>
+              {{ t('search.tip') }} <span class="font-mono">11.5564, 104.9282</span>
             </p>
           </template>
 
@@ -161,7 +161,7 @@
               <span class="grid size-7 place-items-center rounded-lg text-white" :style="{ background: cat(quick.id).color }">
                 <UIcon :name="`i-lucide-${cat(quick.id).icon}`" class="size-4" />
               </span>
-              <p class="text-sm font-semibold">{{ quick.label }} near the map centre</p>
+              <p class="text-sm font-semibold">{{ t('search.nearCentre', { what: quickLabel(quick.id, quick.label) }) }}</p>
             </div>
 
             <section v-for="sec in sections" :key="sec.title" class="mb-4">
@@ -196,7 +196,7 @@
 
             <div v-if="!flat.length && !loading" class="px-4 py-10 text-center">
               <UIcon name="i-lucide-search-x" class="mx-auto size-8 text-(--ui-text-dimmed)" />
-              <p class="mt-2 text-sm text-(--ui-text-muted)">{{ error || 'No matches' }}</p>
+              <p class="mt-2 text-sm text-(--ui-text-muted)">{{ error || t('search.noMatches') }}</p>
             </div>
           </template>
         </motion.div>
@@ -231,10 +231,11 @@ const origin = ref<{ lat: number; lng: number } | null>(null)
 
 watch(open, v => (searching.value = v))
 const cat = (id: CategoryId) => categoryOf(id)
+const { t, isKm, catLabel, quickLabel } = useLang()
 
-const placeholders = ['Search places, provinces, villages…', 'Paste a Google Maps link', 'ស្វែងរកខេត្ត ស្រុក ឃុំ ភូមិ']
+const placeholders = computed(() => [t('search.ph1'), t('search.ph2'), t('search.ph3')])
 const phIndex = ref(0)
-const placeholder = computed(() => placeholders[phIndex.value % placeholders.length])
+const placeholder = computed(() => placeholders.value[phIndex.value % placeholders.value.length])
 let phTimer: ReturnType<typeof setInterval> | undefined
 onMounted(() => (phTimer = setInterval(() => !open.value && phIndex.value++, 4000)))
 onBeforeUnmount(() => clearInterval(phTimer))
@@ -248,7 +249,7 @@ const provinces = computed(() => {
 })
 
 // ---------------- Recents ----------------
-interface Recent { kind: 'geo' | 'place' | 'area' | 'village' | 'coords'; title: string; subtitle?: string; lat?: number; lng?: number; code?: string; km?: string; category?: CategoryId; id?: string }
+interface Recent { kind: 'geo' | 'place' | 'area' | 'village' | 'coords'; title: string; subtitle?: string; subKm?: string; lat?: number; lng?: number; code?: string; km?: string; category?: CategoryId; id?: string }
 const RKEY = 'phaenti:recent'
 const recents = ref<Recent[]>([])
 try { recents.value = JSON.parse(localStorage.getItem(RKEY) || '[]') } catch { /* ignore */ }
@@ -298,34 +299,37 @@ const sections = computed(() => {
     const smart: Omit<Item, 'index'>[] = []
     const g = gmaps.value
     if (g === 'short') {
-      smart.push({ key: 'short', title: 'Short Google Maps link', subtitle: 'Open it, then copy the full URL from the address bar', icon: 'i-lucide-link', color: '#f59e0b', run: () => {} })
+      smart.push({ key: 'short', title: t('search.shortLink'), subtitle: t('search.shortLinkHint'), icon: 'i-lucide-link', color: '#f59e0b', run: () => {} })
     } else if (g) {
-      const title = g.name || 'Google Maps location'
-      smart.push({ key: 'gm', title, subtitle: `From Google Maps · ${formatCoords(g.lat, g.lng)}`, icon: 'i-lucide-link', color: '#4285f4', run: () => draftAt(g.lat, g.lng, title, formatCoords(g.lat, g.lng), 'other'), recent: { kind: 'coords', title, lat: g.lat, lng: g.lng } })
+      const title = g.name || t('search.googleLocation')
+      smart.push({ key: 'gm', title, subtitle: t('search.fromGoogle', { coords: formatCoords(g.lat, g.lng) }), icon: 'i-lucide-link', color: '#4285f4', run: () => draftAt(g.lat, g.lng, title, formatCoords(g.lat, g.lng), 'other'), recent: { kind: 'coords', title, lat: g.lat, lng: g.lng } })
     } else if (coords.value) {
       const { lat, lng } = coords.value
-      smart.push({ key: 'coords', title: formatCoords(lat, lng), subtitle: 'Drop a pin at these coordinates', icon: 'i-lucide-crosshair', color: '#0ea5e9', run: () => draftAt(lat, lng, 'Pinned location', formatCoords(lat, lng), 'other'), recent: { kind: 'coords', title: formatCoords(lat, lng), lat, lng } })
+      smart.push({ key: 'coords', title: formatCoords(lat, lng), subtitle: t('search.dropHere'), icon: 'i-lucide-crosshair', color: '#0ea5e9', run: () => draftAt(lat, lng, t('place.pinnedLocation'), formatCoords(lat, lng), 'other'), recent: { kind: 'coords', title: formatCoords(lat, lng), lat, lng } })
     }
     push('', smart)
 
-    push('My places', localHits.value.map(p => ({
-      key: `l${p.id}`, title: p.name, subtitle: `${cat(p.category).label} · ${p.address || formatCoords(p.lat, p.lng)}`,
+    push(t('search.myPlaces'), localHits.value.map(p => ({
+      key: `l${p.id}`, title: p.name, subtitle: `${catLabel(p.category, cat(p.category).label)} · ${p.address || formatCoords(p.lat, p.lng)}`,
       icon: '', color: '', pin: pinDataUrl(p.category, p.status), meta: dist(p.lat, p.lng),
       run: () => { select(p.id); mapApi.value?.flyTo(p.lng, p.lat, 15) },
       recent: { kind: 'place', title: p.name, subtitle: p.address, id: p.id, lat: p.lat, lng: p.lng },
     })))
 
-    push('Cambodia', adminHits.value.map(h => ({
-      key: `a${h.code}`, title: h.name, km: h.km, subtitle: [h.unit, h.sub].filter(Boolean).join(' · '),
+    push(t('search.cambodia'), adminHits.value.map(h => ({
+      key: `a${h.code}`,
+      title: isKm.value && h.km ? h.km : h.name,
+      km: isKm.value && h.km ? h.name : h.km,
+      subtitle: isKm.value ? [h.unitKm, h.subKm].filter(Boolean).join(' · ') : [h.unit, h.sub].filter(Boolean).join(' · '),
       icon: h.level === 1 ? 'i-lucide-flag' : h.level === 2 ? 'i-lucide-building-2' : h.level === 3 ? 'i-lucide-map' : 'i-lucide-home',
       color: h.level === 1 ? '#7c3aed' : h.level === 2 ? '#2563eb' : h.level === 3 ? '#0d9488' : '#d97706',
       run: () => (h.level === 4 ? goVillage(h.code, h.name, h.km) : goArea(h.code)),
-      recent: { kind: h.level === 4 ? 'village' : 'area', title: h.name, subtitle: [h.unit, h.sub].filter(Boolean).join(' · '), code: h.code, km: h.km },
+      recent: { kind: h.level === 4 ? 'village' : 'area', title: h.name, subtitle: [h.unit, h.sub].filter(Boolean).join(' · '), code: h.code, km: h.km, subKm: [h.unitKm, h.subKm].filter(Boolean).join(' · ') },
     })))
   }
 
-  push(quick.value ? '' : 'Places', remote.value.map(r => ({
-    key: `r${r.id}`, title: r.name, subtitle: [r.kind && r.category === 'other' ? r.kind : cat(r.category).label, r.subtitle].filter(Boolean).join(' · '),
+  push(quick.value ? '' : t('search.places'), remote.value.map(r => ({
+    key: `r${r.id}`, title: r.name, subtitle: [r.kind && r.category === 'other' ? r.kind : catLabel(r.category, cat(r.category).label), r.subtitle].filter(Boolean).join(' · '),
     icon: `i-lucide-${cat(r.category).icon}`, color: cat(r.category).color, meta: dist(r.lat, r.lng),
     run: () => draftAt(r.lat, r.lng, r.name, r.subtitle, r.category),
     recent: { kind: 'geo', title: r.name, subtitle: r.subtitle, lat: r.lat, lng: r.lng, category: r.category },
@@ -348,7 +352,7 @@ async function runRemote(text: string, tags?: string[]) {
   } catch (e: any) {
     if (e?.name !== 'AbortError') {
       remote.value = []
-      error.value = navigator.onLine ? 'Place search is unavailable right now' : 'You’re offline — showing saved places and Cambodian areas only'
+      error.value = navigator.onLine ? t('search.unavailable') : t('search.offline')
     }
   } finally {
     loading.value = false
@@ -449,7 +453,7 @@ async function pasteFromClipboard() {
     }
   } catch {
     input.value?.focus()
-    toast.add({ title: 'Long-press the search box and choose Paste', icon: 'i-lucide-clipboard', duration: 2500 })
+    toast.add({ title: t('search.pasteHint'), icon: 'i-lucide-clipboard', duration: 2500 })
   }
 }
 
