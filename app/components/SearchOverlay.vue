@@ -194,7 +194,11 @@
               </div>
             </section>
 
-            <div v-if="!flat.length && !loading" class="px-4 py-10 text-center">
+            <div v-if="blocked" class="px-4 py-10 text-center">
+              <UIcon name="i-lucide-ban" class="mx-auto size-8 text-(--ui-text-dimmed)" />
+              <p class="mt-2 text-sm text-(--ui-text-muted)">{{ t('search.blocked') }}</p>
+            </div>
+            <div v-else-if="!flat.length && !loading" class="px-4 py-10 text-center">
               <UIcon name="i-lucide-search-x" class="mx-auto size-8 text-(--ui-text-dimmed)" />
               <p class="mt-2 text-sm text-(--ui-text-muted)">{{ error || t('search.noMatches') }}</p>
             </div>
@@ -212,6 +216,7 @@ import type { GeoResult } from '~/composables/useGeocode'
 import { QUICK_SEARCHES, categoryOf, type CategoryId } from '~/utils/categories'
 import { pinDataUrl } from '~/utils/pins'
 import { adminCounts } from '~/composables/useAdmin'
+import { isBlockedText } from '~/composables/useHidden'
 
 defineProps<{ hidden?: boolean }>()
 const { places } = usePlaces()
@@ -278,14 +283,15 @@ interface Item {
 }
 
 const debounced = refDebounced(q, 260)
+const blocked = computed(() => isBlockedText(q.value))
 const coords = computed(() => parseCoordinates(q.value))
 const gmaps = computed(() => parseGoogleMapsUrl(q.value))
 const localHits = computed(() => {
   const s = q.value.trim().toLowerCase()
-  if (s.length < 2) return []
+  if (s.length < 2 || blocked.value) return []
   return places.value.filter(p => p.name.toLowerCase().includes(s) || p.address.toLowerCase().includes(s) || p.notes.toLowerCase().includes(s)).slice(0, 4)
 })
-const adminHits = computed(() => (admin.ready.value && !coords.value && !gmaps.value ? admin.search(q.value, 6) : []))
+const adminHits = computed(() => (admin.ready.value && !blocked.value && !coords.value && !gmaps.value ? admin.search(q.value, 6) : []))
 
 const sections = computed(() => {
   let i = 0
@@ -295,6 +301,7 @@ const sections = computed(() => {
   }
   const dist = (lat: number, lng: number) => (origin.value ? formatDistance(distanceKm(origin.value, { lat, lng })) : '')
 
+  if (blocked.value) return secs
   if (!quick.value) {
     const smart: Omit<Item, 'index'>[] = []
     const g = gmaps.value
@@ -362,7 +369,7 @@ async function runRemote(text: string, tags?: string[]) {
 watch(debounced, (s) => {
   if (quick.value) return
   const text = s.trim()
-  if (text.length < 2 || coords.value || gmaps.value) {
+  if (text.length < 2 || coords.value || gmaps.value || isBlockedText(text)) {
     ctrl?.abort()
     remote.value = []
     loading.value = false

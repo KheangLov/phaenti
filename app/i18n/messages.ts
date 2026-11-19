@@ -138,6 +138,7 @@ export const en = {
     unavailable: 'Place search is unavailable right now',
     offline: 'You’re offline — showing saved places and Cambodian areas only',
     pasteHint: 'Long-press the search box and choose Paste',
+    blocked: 'Searches about Thailand aren’t available in Phaenti.',
   },
   install: {
     titleInstalled: 'Phaenti is installed',
@@ -355,6 +356,7 @@ export const km: Shape<typeof en> = {
     unavailable: 'ការស្វែងរកទីកន្លែងមិនអាចប្រើបាននៅពេលនេះទេ',
     offline: 'អ្នកនៅក្រៅបណ្ដាញ — បង្ហាញតែទីកន្លែងដែលបានរក្សាទុក និងតំបន់ក្នុងកម្ពុជា',
     pasteHint: 'ចុចឱ្យយូរលើប្រអប់ស្វែងរក ហើយជ្រើស បិទភ្ជាប់',
+    blocked: 'ការស្វែងរកទាក់ទងនឹងប្រទេសថៃ មិនមាននៅក្នុង Phaenti ទេ។',
   },
   install: {
     titleInstalled: 'Phaenti ត្រូវបានដំឡើងហើយ',

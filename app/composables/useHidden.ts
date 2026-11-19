@@ -59,10 +59,33 @@ export function isHiddenPoint(lat: number, lng: number) {
   return false
 }
 
-/** Search results: drop by country code, country name or location. */
-export function isHiddenResult(r: { lat: number; lng: number; countryCode?: string; country?: string }) {
+// Words that make a search, or a search result, about Thailand. Checked against
+// every Cambodian province, district, commune and village name: none match.
+const BLOCKED_WORDS = [
+  'thai', 'thais', 'thailand', 'siam', 'siamese', 'bangkok', 'krung thep', 'pattaya', 'phuket', 'chiang mai',
+  'chiang rai', 'krabi', 'ayutthaya', 'hua hin', 'samui', 'surat thani', 'khon kaen', 'udon thani',
+  'nakhon ratchasima', 'korat', 'hat yai', 'hatyai', 'songkhla', 'sukhothai', 'aranyaprathet', 'chanthaburi',
+  'sa kaeo', 'ubon ratchathani', 'nong khai', 'trat', 'surin', 'buriram', 'sisaket', 'si sa ket',
+  'kanchanaburi', 'nakhon phanom', 'mukdahan', 'loei', 'phitsanulok', 'lopburi', 'rayong', 'koh chang',
+  'ko chang', 'koh phangan', 'ko phangan', 'koh tao', 'ko tao', 'phang nga', 'phi phi', 'khao san',
+]
+const BLOCKED_RE = new RegExp(`(^|[^a-z])(${BLOCKED_WORDS.map(w => w.replace(/ /g, '[\\s-]*')).join('|')})($|[^a-z])`, 'i')
+/** Thai script, and the Khmer word for Thai (ថៃ). Not សៀម: it is part of Siem Reap and many Cambodian names. */
+const BLOCKED_SCRIPT_RE = /[\u0E00-\u0E7F]|ថៃ/
+
+const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
+/** Is this text about Thailand? Used for search queries and result names. */
+export function isBlockedText(text: string | undefined | null) {
+  if (!text) return false
+  return BLOCKED_SCRIPT_RE.test(text) || BLOCKED_RE.test(fold(text))
+}
+
+/** Search results: drop by country, location, or a name about Thailand. */
+export function isHiddenResult(r: { lat: number; lng: number; countryCode?: string; country?: string; name?: string; subtitle?: string }) {
   if (r.countryCode && HIDDEN_COUNTRY_CODES.includes(r.countryCode.toUpperCase())) return true
   if (r.country && HIDDEN_NAME_PARTS.some(p => r.country!.includes(p))) return true
+  if (isBlockedText(r.name) || isBlockedText(r.subtitle)) return true
   return isHiddenPoint(r.lat, r.lng)
 }
 
