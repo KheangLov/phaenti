@@ -1,5 +1,6 @@
 // Free geocoding via Photon (komoot), built on OpenStreetMap data.
 import { categoryFromOsm, type CategoryId } from '~/utils/categories'
+import { isHiddenResult } from '~/composables/useHidden'
 
 export interface GeoResult {
   id: string
@@ -9,6 +10,8 @@ export interface GeoResult {
   lng: number
   category: CategoryId
   kind: string
+  countryCode?: string
+  country?: string
 }
 
 const BASE = 'https://photon.komoot.io'
@@ -28,6 +31,8 @@ function format(f: any, i: number): GeoResult {
     lng,
     category: categoryFromOsm(p.osm_key, p.osm_value),
     kind: (p.osm_value ?? p.type ?? '').replace(/_/g, ' '),
+    countryCode: p.countrycode,
+    country: p.country,
   }
 }
 
@@ -47,7 +52,7 @@ export async function searchPlaces(
   const res = await fetch(url, { signal: opts.signal })
   if (!res.ok) throw new Error(`Search failed (${res.status})`)
   const json = await res.json()
-  return (json.features ?? []).map(format) as GeoResult[]
+  return ((json.features ?? []).map(format) as GeoResult[]).filter(r => !isHiddenResult(r))
 }
 
 export async function reverseGeocode(lat: number, lng: number, signal?: AbortSignal) {
@@ -58,7 +63,8 @@ export async function reverseGeocode(lat: number, lng: number, signal?: AbortSig
     const res = await fetch(url, { signal })
     if (!res.ok) return null
     const f = (await res.json()).features?.[0]
-    return f ? format(f, 0) : null
+    const r = f ? format(f, 0) : null
+    return r && !isHiddenResult(r) ? r : null
   } catch {
     return null
   }

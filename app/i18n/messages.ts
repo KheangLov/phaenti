@@ -201,6 +201,10 @@ export const en = {
     labelArea: 'this area',
     labelCambodia: 'Cambodia',
   },
+  hidden: {
+    title: 'This area isn’t available',
+    body: 'Phaenti doesn’t show places in this country.',
+  },
   styles: {
     title: 'Map style',
     desc: 'Pick a look. Your pins and Cambodia layers work on every style.',
@@ -413,6 +417,10 @@ export const km: Shape<typeof en> = {
     protectHint2: 'កម្មវិធីរុករកផ្ដល់សិទ្ធិនេះដល់កម្មវិធីដែលបានដំឡើង។',
     labelArea: 'តំបន់នេះ',
     labelCambodia: 'កម្ពុជា',
+  },
+  hidden: {
+    title: 'តំបន់នេះមិនអាចប្រើបានទេ',
+    body: 'Phaenti មិនបង្ហាញទីកន្លែងក្នុងប្រទេសនេះទេ។',
   },
   styles: {
     title: 'រចនាប័ទ្មផែនទី',

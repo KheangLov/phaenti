@@ -26,6 +26,7 @@ import { categoryOf, type CategoryId } from '~/utils/categories'
 import { ensurePinImages } from '~/utils/pins'
 import { adminCounts } from '~/composables/useAdmin'
 import type { OfflineInfo } from '~/composables/useAppState'
+import { HIDDEN_GEO_URL, HIDDEN_NAME_PARTS } from '~/composables/useHidden'
 
 const el = ref<HTMLElement>()
 const loaded = ref(false)
@@ -91,6 +92,7 @@ async function addLayers() {
   await ensurePinImages(map)
   if (!map || map.getSource('places')) return
   fonts = fontsOf(map.getStyle())
+  hideCountries()
   apply3D()
   addAdminLayers()
   addPlaceLayers()
@@ -101,6 +103,42 @@ async function addLayers() {
   syncArea()
   syncVisibility()
   if (lastMe) setData('me', pointFC(lastMe.lng, lastMe.lat))
+}
+
+// ---------- Hidden countries (Thailand) ----------
+/** Basemap filters may use the legacy syntax, which can't be mixed with expressions. */
+function isExpressionFilter(f: unknown): boolean {
+  if (f === true || f === false) return true
+  if (!Array.isArray(f) || !f.length) return false
+  switch (f[0]) {
+    case 'has': return f.length >= 2 && f[1] !== '$id' && f[1] !== '$type'
+    case 'in': return f.length >= 3 && (typeof f[1] !== 'string' || Array.isArray(f[2]))
+    case '!in': case '!has': case 'none': return false
+    case '==': case '!=': case '>': case '>=': case '<': case '<=': return f.length !== 3 || Array.isArray(f[1]) || Array.isArray(f[2])
+    case 'any': case 'all': return f.slice(1).every(x => typeof x === 'boolean' || isExpressionFilter(x))
+    default: return true
+  }
+}
+
+function hideCountries() {
+  if (!map || map.getSource('hidden')) return
+  const style = map.getStyle()
+  // 1. Drop basemap labels that name the hidden country ("Thailand", "Gulf of Thailand", "ไทย"…)
+  const fields = ['name', 'name_en', 'name:en', 'name:latin', 'name_int', 'name:nonlatin']
+  const named: ExpressionSpecification = ['any', ...fields.flatMap(k => HIDDEN_NAME_PARTS.map(p => ['in', p, ['to-string', ['get', k]]] as ExpressionSpecification))]
+  for (const l of style.layers) {
+    if (l.type !== 'symbol') continue
+    const f = (l as { filter?: unknown }).filter
+    if (f === undefined) map.setFilter(l.id, ['!', named])
+    else if (isExpressionFilter(f)) map.setFilter(l.id, ['all', f as ExpressionSpecification, ['!', named]])
+  }
+  // 2. Cover the country's land with the map's own ground colour, above every basemap layer
+  const bg = style.layers.find(l => l.type === 'background') as { paint?: Record<string, unknown> } | undefined
+  const raw = bg?.paint?.['background-color']
+  const ground = typeof raw === 'string' ? raw : isDark.value ? '#161616' : '#f2efe9'
+  map.addSource('hidden', { type: 'geojson', data: `${location.origin}${HIDDEN_GEO_URL}` })
+  map.addLayer({ id: 'hidden-fill', type: 'fill', source: 'hidden', paint: { 'fill-color': ground, 'fill-antialias': true } })
+  map.addLayer({ id: 'hidden-edge', type: 'line', source: 'hidden', layout: { 'line-join': 'round' }, paint: { 'line-color': ground, 'line-width': 1.5 } })
 }
 
 function addAdminLayers() {
@@ -652,7 +690,7 @@ function offlineInfo(): OfflineInfo | null {
 
 let geoAbort: AbortController | null = null
 async function startDraft(lng: number, lat: number, source: 'map' | 'location', category: CategoryId = 'other') {
-  openDraft({ name: t('place.droppedPin'), category, address: formatCoords(lat, lng), lat, lng, source, loading: true })
+  if (!openDraft({ name: t('place.droppedPin'), category, address: formatCoords(lat, lng), lat, lng, source, loading: true })) return
   flyTo(lng, lat)
   geoAbort?.abort()
   geoAbort = new AbortController()

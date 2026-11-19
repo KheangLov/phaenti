@@ -384,8 +384,7 @@ function runQuick(c: (typeof QUICK_SEARCHES)[number]) {
 
 // ---------------- Actions ----------------
 function draftAt(lat: number, lng: number, name: string, address: string, category: CategoryId) {
-  openDraft({ name, category, address, lat, lng, source: 'search' })
-  mapApi.value?.flyTo(lng, lat, 16)
+  if (openDraft({ name, category, address, lat, lng, source: 'search' })) mapApi.value?.flyTo(lng, lat, 16)
 }
 function goArea(code: string) {
   const a = admin.area(code)

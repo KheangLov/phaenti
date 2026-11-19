@@ -3,8 +3,13 @@ import type { Place, PlaceStatus } from '~/utils/db'
 import { CATEGORY_MAP, type CategoryId } from '~/utils/categories'
 import { db } from '~/utils/db'
 
+import { isHiddenPoint, useHidden } from '~/composables/useHidden'
+
 // One live subscription shared by every component.
-const places = shallowRef<Place[]>([])
+const allPlaces = shallowRef<Place[]>([])
+const hidden = useHidden()
+// Places inside hidden countries stay in the database but never show up.
+const places = computed(() => (hidden.ready.value ? allPlaces.value.filter(p => !isHiddenPoint(p.lat, p.lng)) : allPlaces.value))
 const ready = ref(false)
 let started = false
 let persistAsked = false
@@ -14,7 +19,7 @@ function start() {
   started = true
   liveQuery(() => db.places.orderBy('updatedAt').reverse().toArray()).subscribe({
     next: (rows) => {
-      places.value = rows
+      allPlaces.value = rows
       ready.value = true
     },
     error: (e) => console.error('[phaenti] db', e),
@@ -89,7 +94,7 @@ export function usePlaces() {
   }
 
   function toExport(): ExportFile {
-    return { app: 'phaenti', version: 1, exportedAt: new Date().toISOString(), places: places.value }
+    return { app: 'phaenti', version: 1, exportedAt: new Date().toISOString(), places: allPlaces.value }
   }
 
   /** Merge by id; newer updatedAt wins. Returns counts. */

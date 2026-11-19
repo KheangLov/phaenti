@@ -49,6 +49,14 @@ English and Khmer (ភាសាខ្មែរ): menu (…) → ភាសាខ�
 and remembers your choice. All app text lives in `app/i18n/messages.ts`; Cambodian area names switch to
 their Khmer form, and Noto Sans Khmer is bundled so Khmer looks the same on every phone, offline too.
 
+## Hidden country
+
+Thailand is hidden: its land is covered on every map style, basemap labels naming it are removed,
+search results there are dropped, and pins can't be added there. Places already saved inside it stay
+in your backup but are not shown. The shape (`public/geo/hidden-th.json`) is Thailand's land from
+geoBoundaries minus Cambodia's territory, so nothing inside Cambodia is ever covered.
+Logic lives in `app/composables/useHidden.ts`.
+
 ## Map styles
 
 Layers button → 12 looks with live previews: Auto (follows light/dark), Liberty, Positron, Bright,

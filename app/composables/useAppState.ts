@@ -1,5 +1,7 @@
 // Small shared UI state (client-only app, so module-level refs are safe).
 import type { CategoryId } from '~/utils/categories'
+import { isHiddenPoint } from '~/composables/useHidden'
+const { t } = useLang()
 
 export interface Draft {
   name: string
@@ -77,12 +79,18 @@ export function useAppState() {
     selectedId.value = id
     snap.value = id ? 'half' : 'peek'
   }
+  /** Returns false when the spot is in a hidden country. */
   function openDraft(d: Draft) {
+    if (isHiddenPoint(d.lat, d.lng)) {
+      useToast().add({ title: t('hidden.title'), description: t('hidden.body'), icon: 'i-lucide-map-pin-off', color: 'warning' })
+      return false
+    }
     selectedId.value = null
     area.value = null
     picking.value = false
     draft.value = d
     snap.value = 'half'
+    return true
   }
   function openArea(a: AreaSelection) {
     selectedId.value = null
