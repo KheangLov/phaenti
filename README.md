@@ -72,6 +72,12 @@ in your backup but are not shown. The shape (`public/geo/hidden-th.json`) is Tha
 geoBoundaries minus Cambodia's territory, so nothing inside Cambodia is ever covered.
 Logic lives in `app/composables/useHidden.ts`.
 
+## Routing & measuring
+
+- **Route** on any place or search result: start from your location, one of your saved homes/offices/family, or the map centre; choose car, moto, bike or walk. Shows time, distance, arrival time and turn-by-turn steps (English or Khmer), then hands off to Google Maps for live navigation.
+- Routes come from the free community [Valhalla](https://valhalla1.openstreetmap.de) server, falling back to [OSRM](https://routing.openstreetmap.de). Both allow about one request per second and need a connection. Routes never pass through the hidden country (`public/geo/route-avoid-th.json`).
+- **Measure** (ruler button or ⋯ menu): tap points to measure a path, drag points to adjust, tap the first point to close the shape and get its area and perimeter. Back closes it.
+
 ## Map styles
 
 Layers button → 12 looks with live previews: Auto (follows light/dark), Liberty, Positron, Bright,

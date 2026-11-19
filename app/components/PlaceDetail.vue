@@ -60,15 +60,13 @@
 
     <!-- Quick actions -->
     <div class="mt-4 grid grid-cols-3 gap-2">
-      <a
-        :href="googleMapsUrl(place.lat, place.lng)"
-        target="_blank"
-        rel="noopener"
+      <button
         class="flex flex-col items-center gap-1 rounded-2xl bg-(--ui-bg-elevated) py-3 text-xs font-medium active:scale-95 transition"
+        @click="openRoute({ lat: place.lat, lng: place.lng, name: place.name, kind: 'place' })"
       >
-        <UIcon name="i-lucide-navigation" class="size-5 text-sky-500" />
-        {{ t('place.directions') }}
-      </a>
+        <UIcon name="i-lucide-route" class="size-5 text-sky-500" />
+        {{ t('place.route') }}
+      </button>
       <button class="flex flex-col items-center gap-1 rounded-2xl bg-(--ui-bg-elevated) py-3 text-xs font-medium active:scale-95 transition" @click="share">
         <UIcon name="i-lucide-share" class="size-5 text-(--ui-primary)" />
         {{ t('place.share') }}
@@ -167,7 +165,7 @@ import { placeAdmin } from '~/composables/useAdmin'
 
 const props = defineProps<{ place: Place }>()
 const { update, remove, restore } = usePlaces()
-const { select, openArea, mapApi: mapApiRef } = useAppState()
+const { select, openArea, openRoute, mapApi: mapApiRef } = useAppState()
 const admin = useAdmin()
 
 const areas = computed(() => {

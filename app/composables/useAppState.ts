@@ -1,5 +1,7 @@
 // Small shared UI state (client-only app, so module-level refs are safe).
 import type { CategoryId, PersonalId } from '~/utils/categories'
+import type { TravelMode } from '~/composables/useRouting'
+import type { LngLat } from '~/utils/geo'
 import { isHiddenPoint } from '~/composables/useHidden'
 const { t } = useLang()
 
@@ -18,6 +20,9 @@ export interface AreaSelection {
   village?: { code: string; name: string; km: string }
 }
 
+export interface RouteEnd { lat: number; lng: number; name: string; kind: 'me' | 'place' | 'centre' }
+export interface RouteRequest { to: RouteEnd; from: RouteEnd | null; mode: TravelMode }
+
 export type SheetSnap = 'peek' | 'half' | 'full'
 export type Filter = 'all' | 'been' | 'planned' | PersonalId
 
@@ -30,6 +35,8 @@ export interface MapApi {
   locate: () => Promise<{ lng: number; lat: number } | null>
   pulse: (lng: number, lat: number, color: string) => void
   offlineInfo: () => OfflineInfo | null
+  showRoute: (coords: LngLat[], color: string) => void
+  clearRoute: () => void
 }
 
 export interface OfflineInfo {
@@ -50,6 +57,10 @@ const searching = ref(false)
 const filter = ref<Filter>('all')
 const snap = ref<SheetSnap>('peek')
 const mapApi = shallowRef<MapApi | null>(null)
+const route = ref<RouteRequest | null>(null)
+const measuring = ref(false)
+const measurePts = shallowRef<LngLat[]>([])
+const measureClosed = ref(false)
 
 function pref(key: string, fallback: boolean) {
   const r = ref(fallback)
@@ -71,11 +82,19 @@ if (import.meta.client) {
     try { localStorage.setItem('phaenti:style', v) } catch { /* ignore */ }
   })
 }
+function lastMode(): TravelMode {
+  try {
+    const m = localStorage.getItem('phaenti:mode')
+    if (m === 'car' || m === 'moto' || m === 'bike' || m === 'walk') return m
+  } catch { /* ignore */ }
+  return 'moto'
+}
 const showBoundaries = pref('phaenti:boundaries', true)
 const showExplored = pref('phaenti:explored', true)
 
 export function useAppState() {
   function select(id: string | null) {
+    route.value = null
     draft.value = null
     area.value = null
     selectedId.value = id
@@ -89,18 +108,26 @@ export function useAppState() {
     }
     selectedId.value = null
     area.value = null
+    route.value = null
     picking.value = false
     draft.value = d
     snap.value = 'half'
     return true
   }
   function openArea(a: AreaSelection) {
+    route.value = null
     selectedId.value = null
     draft.value = null
     area.value = a
     snap.value = 'half'
   }
+  function openRoute(to: RouteEnd, mode?: TravelMode) {
+    measuring.value = false
+    route.value = { to, from: route.value?.from ?? null, mode: mode ?? route.value?.mode ?? lastMode() }
+    snap.value = 'half'
+  }
   function closeAll() {
+    route.value = null
     selectedId.value = null
     draft.value = null
     area.value = null
@@ -108,6 +135,7 @@ export function useAppState() {
   }
   return {
     selectedId, draft, area, picking, pendingCategory, searching, filter, snap, mapApi,
+    route, measuring, measurePts, measureClosed, openRoute,
     showBoundaries, showExplored, styleChoice,
     select, openDraft, openArea, closeAll,
   }

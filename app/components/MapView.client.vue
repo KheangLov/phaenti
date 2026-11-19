@@ -22,6 +22,7 @@ import type { Map as MLMap, GeoJSONSource, MapMouseEvent, MapTouchEvent, Express
 import { AUTO_STYLE, styleById, recolor, fontsOf, type MapStyleDef } from '~/utils/mapStyles'
 import { STATUS_COLORS } from '~/utils/db'
 import { WHITE, whiteA } from '~/utils/colors'
+import { haversineKm, formatKm, type LngLat } from '~/utils/geo'
 import { categoryOf, matchesFilter, type CategoryId } from '~/utils/categories'
 import { ensurePinImages } from '~/utils/pins'
 import { adminCounts } from '~/composables/useAdmin'
@@ -32,7 +33,8 @@ const el = ref<HTMLElement>()
 const loaded = ref(false)
 
 const { places } = usePlaces()
-const { selectedId, draft, area, filter, mapApi, picking, showBoundaries, showExplored, select, openDraft, openArea } = useAppState()
+const { selectedId, draft, area, filter, mapApi, picking, showBoundaries, showExplored, select, openDraft, openArea, measuring, measurePts, measureClosed } = useAppState()
+const { isKm } = useLang()
 const colorMode = useColorMode()
 const emit = defineEmits<{ moving: [boolean] }>()
 const { t } = useLang()
@@ -105,6 +107,8 @@ async function addLayers() {
   syncArea()
   syncVisibility()
   if (lastMe) setData('me', pointFC(lastMe.lng, lastMe.lat))
+  syncRoute(false)
+  syncMeasure()
 }
 
 // ---------- Hidden countries (Thailand) ----------
@@ -313,6 +317,24 @@ function addPlaceLayers() {
   })
   for (const s of ['selected', 'draft', 'pulse', 'me']) map.addSource(s, { type: 'geojson', data: EMPTY })
 
+  // Route (under the pins)
+  for (const s of ['route', 'route-ends']) map.addSource(s, { type: 'geojson', data: EMPTY, lineMetrics: s === 'route' } as never)
+  map.addLayer({
+    id: 'route-casing', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: { 'line-color': isDark.value ? '#0b1020' : WHITE, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 6, 14, 12], 'line-opacity': 0.95 },
+  })
+  map.addLayer({
+    id: 'route-line', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: { 'line-color': ['get', 'color'], 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 3.5, 14, 7.5] },
+  })
+  map.addLayer({
+    id: 'route-ends', type: 'circle', source: 'route-ends',
+    paint: {
+      'circle-radius': 7, 'circle-color': ['get', 'color'],
+      'circle-stroke-width': 3, 'circle-stroke-color': WHITE,
+    },
+  })
+
   // Clusters: outer ring = share of "been", core = count
   map.addLayer({
     id: 'clusters-ring', type: 'circle', source: 'places', filter: ['has', 'point_count'],
@@ -387,6 +409,26 @@ function addPlaceLayers() {
     paint: { 'icon-opacity': 0.92 },
   })
 
+  // Measuring tool (on top of everything)
+  for (const s of ['measure-fill', 'measure-line', 'measure-pts']) map.addSource(s, { type: 'geojson', data: EMPTY })
+  map.addLayer({ id: 'measure-fill', type: 'fill', source: 'measure-fill', paint: { 'fill-color': '#f59e0b', 'fill-opacity': 0.15 } })
+  map.addLayer({
+    id: 'measure-line', type: 'line', source: 'measure-line', layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: { 'line-color': '#f59e0b', 'line-width': 3, 'line-dasharray': [2, 1.2] },
+  })
+  map.addLayer({
+    id: 'measure-pts', type: 'circle', source: 'measure-pts',
+    paint: {
+      'circle-radius': ['case', ['get', 'first'], 8, 6.5],
+      'circle-color': WHITE, 'circle-stroke-width': 3, 'circle-stroke-color': '#f59e0b',
+    },
+  })
+  map.addLayer({
+    id: 'measure-labels', type: 'symbol', source: 'measure-pts', filter: ['!=', ['get', 'label'], ''],
+    layout: { 'text-field': ['get', 'label'], 'text-font': fonts.bold, 'text-size': 12, 'text-offset': [0, -1.6], 'text-allow-overlap': true },
+    paint: { 'text-color': isDark.value ? '#fde68a' : '#92400e', 'text-halo-color': isDark.value ? '#0b1020' : WHITE, 'text-halo-width': 2 },
+  })
+
   // My location
   map.addLayer({ id: 'me-halo', type: 'circle', source: 'me', paint: { 'circle-radius': 22, 'circle-color': '#3b82f6', 'circle-opacity': 0.16 } })
   map.addLayer({ id: 'me-dot', type: 'circle', source: 'me', paint: { 'circle-radius': 7, 'circle-color': '#3b82f6', 'circle-stroke-width': 3, 'circle-stroke-color': WHITE } })
@@ -408,6 +450,113 @@ function syncSelected() {
 function syncDraft() {
   const d = draft.value
   setData('draft', d ? pointFC(d.lng, d.lat, { category: d.category }) : EMPTY)
+}
+
+// ---------- Route ----------
+let routeData: { coords: LngLat[]; color: string } | null = null
+let routeAnim = 0
+function syncRoute(animate: boolean) {
+  if (!map || !layersReady) return
+  cancelAnimationFrame(routeAnim)
+  if (!routeData) {
+    setData('route', EMPTY)
+    setData('route-ends', EMPTY)
+    return
+  }
+  const { coords, color } = routeData
+  const line = (c: LngLat[]): GeoJSON.FeatureCollection => ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: { color }, geometry: { type: 'LineString', coordinates: c } }] })
+  setData('route-ends', {
+    type: 'FeatureCollection',
+    features: [
+      { type: 'Feature', properties: { color: '#10b981' }, geometry: { type: 'Point', coordinates: coords[0]! } },
+      { type: 'Feature', properties: { color }, geometry: { type: 'Point', coordinates: coords[coords.length - 1]! } },
+    ],
+  })
+  if (!animate || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    setData('route', line(coords))
+    return
+  }
+  // Draw the line from start to finish
+  const start = performance.now()
+  const dur = 900
+  const step = (t: number) => {
+    const k = Math.min(1, (t - start) / dur)
+    const e = 1 - Math.pow(1 - k, 3)
+    const n = Math.max(2, Math.round(coords.length * e))
+    setData('route', line(coords.slice(0, n)))
+    if (k < 1) routeAnim = requestAnimationFrame(step)
+  }
+  routeAnim = requestAnimationFrame(step)
+}
+function showRoute(coords: LngLat[], color: string) {
+  routeData = { coords, color }
+  syncRoute(true)
+  if (!map || coords.length < 2) return
+  let w = 180, s = 90, e = -180, n = -90
+  for (const [x, y] of coords) { w = Math.min(w, x); e = Math.max(e, x); s = Math.min(s, y); n = Math.max(n, y) }
+  fitBounds([w, s, e, n], 16)
+}
+function clearRoute() {
+  routeData = null
+  syncRoute(false)
+}
+
+// ---------- Measuring ----------
+function syncMeasure() {
+  if (!map || !layersReady) return
+  const pts = measurePts.value
+  const closed = measureClosed.value && pts.length >= 3
+  const ring = closed ? [...pts, pts[0]!] : pts
+  setData('measure-line', ring.length >= 2 ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: ring } }] } : EMPTY)
+  setData('measure-fill', closed ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [ring] } }] } : EMPTY)
+  let acc = 0
+  setData('measure-pts', {
+    type: 'FeatureCollection',
+    features: pts.map((p, i) => {
+      if (i) acc += haversineKm(pts[i - 1]!, p)
+      return { type: 'Feature', properties: { i, first: i === 0, label: i ? formatKm(acc, isKm.value) : '' }, geometry: { type: 'Point', coordinates: p } }
+    }),
+  })
+  map.getCanvas().style.cursor = measuring.value ? 'crosshair' : ''
+}
+watch([measurePts, measureClosed, measuring], syncMeasure)
+
+function measureClick(e: MapMouseEvent) {
+  if (!map) return
+  const pts = measurePts.value
+  const hit = map.queryRenderedFeatures([[e.point.x - 10, e.point.y - 10], [e.point.x + 10, e.point.y + 10]], { layers: ['measure-pts'] })[0]
+  // Tap the first point to close the shape and get its area
+  if (hit && hit.properties.first && pts.length >= 3 && !measureClosed.value) {
+    measureClosed.value = true
+    haptic('success')
+    return
+  }
+  if (hit || measureClosed.value) return
+  measurePts.value = [...pts, [e.lngLat.lng, e.lngLat.lat]]
+  haptic('tap')
+}
+
+// Drag a point to adjust it
+let dragIndex = -1
+function onMeasureDown(e: MapMouseEvent | MapTouchEvent) {
+  if (!measuring.value || !map) return
+  if ('originalEvent' in e && (e.originalEvent as TouchEvent).touches?.length > 1) return
+  const f = map.queryRenderedFeatures([[e.point.x - 12, e.point.y - 12], [e.point.x + 12, e.point.y + 12]], { layers: ['measure-pts'] })[0]
+  if (!f) return
+  e.preventDefault()
+  dragIndex = Number(f.properties.i)
+  map.dragPan.disable()
+}
+function onMeasureMove(e: MapMouseEvent | MapTouchEvent) {
+  if (dragIndex < 0) return
+  const pts = [...measurePts.value]
+  pts[dragIndex] = [e.lngLat.lng, e.lngLat.lat]
+  measurePts.value = pts
+}
+function onMeasureUp() {
+  if (dragIndex < 0 || !map) return
+  dragIndex = -1
+  map.dragPan.enable()
 }
 
 // Explored tint uses feature-state, so no tiles are re-parsed when places change
@@ -614,8 +763,19 @@ onMounted(async () => {
   })
 
   // Tap: clusters zoom in, pins select, areas open their card, empty map clears
+  map.on('mousedown', onMeasureDown)
+  map.on('touchstart', onMeasureDown)
+  map.on('mousemove', onMeasureMove)
+  map.on('touchmove', onMeasureMove)
+  map.on('mouseup', onMeasureUp)
+  map.on('touchend', onMeasureUp)
+
   map.on('click', async (e: MapMouseEvent) => {
     if (picking.value || !map || !layersReady) return
+    if (measuring.value) {
+      measureClick(e)
+      return
+    }
     const hits = map.queryRenderedFeatures(e.point, { layers: ['clusters', 'points'] })
     const cluster = hits.find(h => h.layer.id === 'clusters')
     if (cluster) {
@@ -664,7 +824,7 @@ onMounted(async () => {
   }
   map.on('touchstart', (e: MapTouchEvent) => {
     clearTimeout(pressTimer)
-    if (e.originalEvent.touches.length !== 1 || picking.value) return
+    if (e.originalEvent.touches.length !== 1 || picking.value || measuring.value) return
     pressStart = { x: e.point.x, y: e.point.y }
     const { lng, lat } = e.lngLat
     pressTimer = setTimeout(() => dropAt(lng, lat), 520)
@@ -676,10 +836,12 @@ onMounted(async () => {
   map.on('touchcancel', () => clearTimeout(pressTimer))
   map.on('movestart', () => clearTimeout(pressTimer))
   map.on('contextmenu', (e: MapMouseEvent) => {
-    if (!('ontouchstart' in window)) dropAt(e.lngLat.lng, e.lngLat.lat)
+    if (!('ontouchstart' in window) && !measuring.value) dropAt(e.lngLat.lng, e.lngLat.lat)
   })
 
   mapApi.value = {
+    showRoute,
+    clearRoute,
     offlineInfo,
     flyTo,
     fitBounds,

@@ -93,9 +93,9 @@
 
     <div class="mt-4 flex items-center justify-between text-xs text-(--ui-text-dimmed)">
       <span>{{ formatCoords(draft.lat, draft.lng) }}</span>
-      <a :href="googleMapsUrl(draft.lat, draft.lng)" target="_blank" rel="noopener" class="inline-flex items-center gap-1 font-medium text-(--ui-text-muted)">
-        {{ t('place.openGoogle') }} <UIcon name="i-lucide-arrow-up-right" class="size-3.5" />
-      </a>
+      <button class="inline-flex items-center gap-1 rounded-full bg-(--ui-bg-elevated) px-2.5 py-1 font-semibold text-sky-600 dark:text-sky-400" @click="openRoute({ lat: draft.lat, lng: draft.lng, name: name || draft.name, kind: 'place' })">
+        <UIcon name="i-lucide-route" class="size-3.5" /> {{ t('place.route') }}
+      </button>
     </div>
   </div>
 </template>
@@ -109,7 +109,7 @@ import type { Draft } from '~/composables/useAppState'
 
 const props = defineProps<{ draft: Draft }>()
 const { add } = usePlaces()
-const { closeAll, select, mapApi, draft: draftRef } = useAppState()
+const { closeAll, select, mapApi, openRoute, draft: draftRef } = useAppState()
 const admin = useAdmin()
 const toast = useToast()
 const { t, pick, catLabel } = useLang()

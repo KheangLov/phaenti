@@ -13,7 +13,7 @@ export default defineNuxtConfig({
       scan: true,
       sizeLimitKb: 96,
       // Icons referenced dynamically (categories)
-      icons: ['utensils', 'coffee', 'wine', 'landmark', 'trees', 'umbrella', 'mountain', 'bed-double', 'shopping-bag', 'palette', 'plane', 'map-pin', 'map', 'building-2', 'home', 'flag', 'history', 'link', 'navigation', 'search', 'x', 'chevron-right', 'arrow-up-left', 'house', 'briefcase-business', 'users-round', 'heart-handshake'].map(i => `lucide:${i}`),
+      icons: ['utensils', 'coffee', 'wine', 'landmark', 'trees', 'umbrella', 'mountain', 'bed-double', 'shopping-bag', 'palette', 'plane', 'map-pin', 'map', 'building-2', 'home', 'flag', 'history', 'link', 'navigation', 'search', 'x', 'chevron-right', 'arrow-up-left', 'house', 'briefcase-business', 'users-round', 'heart-handshake', 'car-front', 'motorbike', 'bike', 'footprints', 'circle-dot', 'flag', 'arrow-up', 'arrow-up-right', 'corner-up-right', 'undo-2', 'corner-up-left', 'split', 'merge', 'rotate-cw', 'ship', 'route', 'ruler'].map(i => `lucide:${i}`),
     },
   },
   colorMode: { preference: 'system', fallback: 'light' },
@@ -130,6 +130,11 @@ export default defineNuxtConfig({
             expiration: { maxEntries: 40000, maxAgeSeconds: 60 * 60 * 24 * 60 },
             cacheableResponse: { statuses: [0, 200] },
           },
+        },
+        {
+          // Routing is live only: never serve a stale route
+          urlPattern: /^https:\/\/(valhalla1|routing)\.openstreetmap\.de\/.*/,
+          handler: 'NetworkOnly',
         },
         {
           urlPattern: /^https:\/\/photon\.komoot\.io\/.*/,

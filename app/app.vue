@@ -4,7 +4,7 @@
       <MapView ref="mapView" @moving="moving = $event" />
 
       <!-- Top: search -->
-      <SearchOverlay ref="search" :hidden="picking" />
+      <SearchOverlay ref="search" :hidden="picking || measuring" />
 
       <!-- Offline indicator -->
       <AnimatePresence>
@@ -37,6 +37,14 @@
             <UIcon name="i-lucide-ellipsis" class="size-5" />
           </button>
         </UDropdownMenu>
+        <button
+          class="shadow-float grid size-11 place-items-center rounded-2xl active:scale-90 transition"
+          :class="measuring ? 'bg-amber-500 text-white' : 'glass'"
+          :aria-label="t('menu.measure')"
+          @click="toggleMeasure"
+        >
+          <UIcon name="i-lucide-ruler" class="size-5" />
+        </button>
         <button class="glass shadow-float grid size-11 place-items-center rounded-2xl active:scale-90 transition" :aria-label="t('app.showAll')" @click="mapApi?.fitAll()">
           <UIcon name="i-lucide-scan" class="size-5" />
         </button>
@@ -110,9 +118,11 @@
       </AnimatePresence>
 
       <!-- Bottom sheet -->
-      <BottomSheet v-model:snap="snap" :hidden="picking" :peek="PEEK" :dismissible="!!(draft || selected || area)" @dismiss="closeAll">
+      <MeasureBar />
+
+      <BottomSheet v-model:snap="snap" :hidden="picking || measuring" :peek="PEEK" :dismissible="!!(draft || selected || area || route)" @dismiss="closeAll">
         <template #header>
-          <div v-if="!draft && !selected && !area" class="px-5 pb-3">
+          <div v-if="!draft && !selected && !area && !route" class="px-5 pb-3">
             <div class="flex items-end justify-between">
               <div>
                 <h2 class="text-xl font-semibold tracking-tight">{{ t('app.yourMap') }}</h2>
@@ -159,7 +169,8 @@
             :exit="{ opacity: 0, y: -10 }"
             :transition="{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }"
           >
-            <DraftCard v-if="draft" :draft="draft" />
+            <RouteCard v-if="route" :route="route" />
+            <DraftCard v-else-if="draft" :draft="draft" />
             <PlaceDetail v-else-if="selected" :place="selected" />
             <AreaCard v-else-if="area" :area="area" />
             <PlaceList v-else />
@@ -188,7 +199,7 @@ const PEEK = 156
 const spring = { type: 'spring', stiffness: 420, damping: 38 } as const
 
 const { places, toExport, importFile } = usePlaces()
-const { selectedId, draft, area, picking, pendingCategory, searching, filter, snap, mapApi, closeAll, showBoundaries, showExplored } = useAppState()
+const { route, measuring, measurePts, measureClosed, selectedId, draft, area, picking, pendingCategory, searching, filter, snap, mapApi, closeAll, showBoundaries, showExplored } = useAppState()
 const colorMode = useColorMode()
 const toast = useToast()
 const { $pwa } = useNuxtApp()
@@ -201,8 +212,8 @@ const locating = ref(false)
 const fileInput = ref<HTMLInputElement>()
 
 const selected = computed(() => places.value.find(p => p.id === selectedId.value) ?? null)
-const contentKey = computed(() => (draft.value ? `d${draft.value.lat},${draft.value.lng}` : selected.value ? `p${selected.value.id}` : area.value ? `a${area.value.code}${area.value.village?.code ?? ''}` : 'list'))
-const showFab = computed(() => !picking.value && !draft.value && !selected.value && !area.value && !searching.value && snap.value === 'peek')
+const contentKey = computed(() => (route.value ? `r${route.value.to.lat},${route.value.to.lng}` : draft.value ? `d${draft.value.lat},${draft.value.lng}` : selected.value ? `p${selected.value.id}` : area.value ? `a${area.value.code}${area.value.village?.code ?? ''}` : 'list'))
+const showFab = computed(() => !picking.value && !measuring.value && !route.value && !draft.value && !selected.value && !area.value && !searching.value && snap.value === 'peek')
 
 const counts = computed(() => {
   let been = 0
@@ -226,6 +237,19 @@ const filters = computed<{ value: Filter; label: string }[]>(() => [
 watch(selected, (s) => {
   if (selectedId.value && !s) selectedId.value = null
 })
+
+function toggleMeasure() {
+  haptic('tap')
+  if (measuring.value) {
+    measuring.value = false
+    measurePts.value = []
+    measureClosed.value = false
+    return
+  }
+  closeAll()
+  picking.value = false
+  measuring.value = true
+}
 
 function startPicking() {
   snap.value = 'peek'
@@ -255,7 +279,12 @@ const search = ref<{ openSearch: () => void; close: () => void }>()
 
 // ---- Native-style Back: each open layer closes in turn ----
 useBackLayer('sheet', () => snap.value !== 'peek' && !draft.value && !selectedId.value && !area.value, () => (snap.value = 'peek'))
-useBackLayer('panel', () => !!(draft.value || selectedId.value || area.value), () => closeAll())
+useBackLayer('panel', () => !!(draft.value || selectedId.value || area.value || route.value), () => closeAll())
+useBackLayer('measure', () => measuring.value, () => {
+  measuring.value = false
+  measurePts.value = []
+  measureClosed.value = false
+})
 useBackLayer('picking', () => picking.value, () => {
   picking.value = false
   pendingCategory.value = null
@@ -367,6 +396,7 @@ const menu = computed<DropdownMenuItem[][]>(() => [
       onSelect: () => (colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'),
     },
     { label: t('menu.addHere'), icon: 'i-lucide-map-pin-plus', onSelect: addHere },
+    { label: t('menu.measure'), icon: 'i-lucide-ruler', onSelect: () => { if (!measuring.value) toggleMeasure() } },
   ],
 ])
 
