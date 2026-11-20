@@ -26,7 +26,7 @@
 
 <script setup lang="ts">
 import type { Map as MLMap, GeoJSONSource, MapMouseEvent, MapTouchEvent, ExpressionSpecification, StyleSpecification } from 'maplibre-gl'
-import { AUTO_STYLE, styleById, recolor, hybrid, fontsOf, OVERLAY_FLAG, SAT_SEA, type MapStyleDef } from '~/utils/mapStyles'
+import { AUTO_STYLE, styleById, recolor, hybrid, fontsOf, OVERLAY_FLAG, SAT_SEA, SAT_SOURCES, type MapStyleDef } from '~/utils/mapStyles'
 import { STATUS_COLORS } from '~/utils/db'
 import { WHITE, whiteA } from '~/utils/colors'
 import { haversineKm, formatKm, type LngLat } from '~/utils/geo'
@@ -48,7 +48,7 @@ const { t } = useLang()
 
 let map: MLMap | null = null
 let ml: typeof import('maplibre-gl') | null = null
-const { styleChoice, snap, camera, zooming, locateMode, satLabels, satTerrain } = useAppState()
+const { styleChoice, snap, camera, zooming, locateMode, satLabels, satTerrain, satHD, satSource } = useAppState()
 const styleDef = computed(() => styleById(styleChoice.value === AUTO_STYLE ? (colorMode.value === 'dark' ? 'dark' : 'liberty') : styleChoice.value))
 const isDark = computed(() => styleDef.value.dark)
 let fonts = { regular: ['Noto Sans Regular'], bold: ['Noto Sans Bold'], italic: ['Noto Sans Italic'] }
@@ -69,7 +69,7 @@ async function resolveStyle(def: MapStyleDef): Promise<string | StyleSpecificati
   try {
     // Fetch the style ourselves so it downloads in parallel with the map library
     const base = await (await fetch(url)).json() as StyleSpecification
-    if (def.satellite) return hybrid(base, def.satellite)
+    if (def.satellite) return hybrid(base, SAT_SOURCES[satSource.value] ?? def.satellite, satHD.value && window.devicePixelRatio >= 1.5 ? 128 : 256)
     if (def.palette) return recolor(base, def.palette)
     // Only hand over the object when every link in it is absolute (relative ones need the style URL)
     return allAbsolute(base) ? base : url
@@ -674,7 +674,7 @@ watch(showExplored, () => {
 })
 watch(showBoundaries, syncVisibility)
 let styleSeq = 0
-watch(styleDef, async (def) => {
+watch([styleDef, () => styleDef.value.satellite && `${satSource.value}${satHD.value}`], async ([def]) => {
   const seq = ++styleSeq
   const style = await resolveStyle(def)
   if (seq !== styleSeq || !map) return

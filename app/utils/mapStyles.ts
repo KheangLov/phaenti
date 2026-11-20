@@ -91,6 +91,12 @@ export const MAP_STYLES: MapStyleDef[] = [
 // credit required). `blankTile=false` makes missing high-zoom tiles 404, so the map keeps
 // showing the sharpest lower-zoom photo instead of a grey "no data" tile.
 const ESRI_IMAGERY = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false'
+/** Imagery sources for Satellite: newest photos, or Esri's "Clarity" archive (sharpest, sometimes older) */
+export const SAT_SOURCES = {
+  latest: ESRI_IMAGERY,
+  clarity: 'https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false',
+} as const
+export type SatSource = keyof typeof SAT_SOURCES
 MAP_STYLES.splice(4, 0, {
   id: 'satellite', label: 'Satellite', tag: 'Hybrid', dark: true, url: `${OFM}/liberty`, satellite: ESRI_IMAGERY,
   credit: 'Imagery: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
@@ -186,7 +192,7 @@ export const SAT_SEA = '#0d2a43'
  * (major roads in warm yellow, streets as thin white lines), boundaries and labels with
  * dark halos so they read on any photo.
  */
-export function hybrid(style: StyleSpecification, tiles: string): StyleSpecification {
+export function hybrid(style: StyleSpecification, tiles: string, tileSize = 256): StyleSpecification {
   const s = structuredClone(style)
   const keep: LayerSpecification[] = []
   const major = /motorway|trunk|primary/
@@ -216,10 +222,12 @@ export function hybrid(style: StyleSpecification, tiles: string): StyleSpecifica
     layer.metadata = { ...(layer.metadata ?? {}), [OVERLAY_FLAG]: true }
     keep.push(layer)
   }
-  s.sources = { ...s.sources, satellite: { type: 'raster', tiles: [tiles], tileSize: 256, maxzoom: 19 } }
+  // tileSize 128 on sharp screens: MapLibre then asks for one zoom level more detail, so each
+  // photo pixel lands on one screen pixel instead of being stretched 2× (4× the tiles, though)
+  s.sources = { ...s.sources, satellite: { type: 'raster', tiles: [tiles], tileSize, maxzoom: 19 } }
   s.layers = [
     { id: 'background', type: 'background', paint: { 'background-color': SAT_SEA } },
-    { id: 'satellite', type: 'raster', source: 'satellite', paint: { 'raster-fade-duration': 120, 'raster-contrast': 0.06, 'raster-saturation': 0.08 } },
+    { id: 'satellite', type: 'raster', source: 'satellite', paint: { 'raster-fade-duration': 120, 'raster-contrast': 0.05, 'raster-resampling': 'linear' } },
     ...keep,
   ]
   return s

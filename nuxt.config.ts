@@ -13,7 +13,7 @@ export default defineNuxtConfig({
       scan: true,
       sizeLimitKb: 96,
       // Icons referenced dynamically (categories)
-      icons: ['utensils', 'coffee', 'wine', 'landmark', 'trees', 'umbrella', 'mountain', 'bed-double', 'shopping-bag', 'palette', 'plane', 'map-pin', 'map', 'building-2', 'home', 'flag', 'history', 'link', 'navigation', 'search', 'x', 'chevron-right', 'arrow-up-left', 'house', 'briefcase-business', 'users-round', 'heart-handshake', 'car-front', 'motorbike', 'bike', 'footprints', 'circle-dot', 'flag', 'arrow-up', 'arrow-up-right', 'corner-up-right', 'undo-2', 'corner-up-left', 'split', 'merge', 'rotate-cw', 'ship', 'route', 'ruler', 'sparkles', 'flame', 'compass', 'locate', 'locate-fixed', 'banknote', 'fuel', 'pill', 'hospital', 'tags', 'mountain-snow', 'bookmark-plus', 'bookmark-check', 'bookmark-minus', 'badge-check', 'image', 'image-off', 'image-plus', 'camera', 'link', 'link-2-off', 'external-link', 'star', 'loader-circle', 'utensils', 'coffee', 'wine', 'landmark', 'trees', 'umbrella', 'mountain', 'bed-double', 'shopping-bag', 'palette', 'plane', 'map-pin'].map(i => `lucide:${i}`),
+      icons: ['utensils', 'coffee', 'wine', 'landmark', 'trees', 'umbrella', 'mountain', 'bed-double', 'shopping-bag', 'palette', 'plane', 'map-pin', 'map', 'building-2', 'home', 'flag', 'history', 'link', 'navigation', 'search', 'x', 'chevron-right', 'arrow-up-left', 'house', 'briefcase-business', 'users-round', 'heart-handshake', 'car-front', 'motorbike', 'bike', 'footprints', 'circle-dot', 'flag', 'arrow-up', 'arrow-up-right', 'corner-up-right', 'undo-2', 'corner-up-left', 'split', 'merge', 'rotate-cw', 'ship', 'route', 'ruler', 'sparkles', 'flame', 'compass', 'locate', 'locate-fixed', 'banknote', 'fuel', 'pill', 'hospital', 'tags', 'mountain-snow', 'satellite', 'scan-eye', 'bookmark-plus', 'bookmark-check', 'bookmark-minus', 'badge-check', 'image', 'image-off', 'image-plus', 'camera', 'link', 'link-2-off', 'external-link', 'star', 'loader-circle', 'utensils', 'coffee', 'wine', 'landmark', 'trees', 'umbrella', 'mountain', 'bed-double', 'shopping-bag', 'palette', 'plane', 'map-pin'].map(i => `lucide:${i}`),
     },
   },
   colorMode: { preference: 'system', fallback: 'light' },
@@ -44,6 +44,7 @@ export default defineNuxtConfig({
         { rel: 'dns-prefetch', href: 'https://tiles.openfreemap.org' },
         { rel: 'dns-prefetch', href: 'https://tiles.versatiles.org' },
         { rel: 'dns-prefetch', href: 'https://server.arcgisonline.com' },
+        { rel: 'dns-prefetch', href: 'https://clarity.maptiles.arcgis.com' },
       ],
     },
   },
@@ -157,7 +158,7 @@ export default defineNuxtConfig({
         },
         {
           // Satellite imagery (Esri World Imagery) and terrain heights (AWS open data)
-          urlPattern: /^https:\/\/(server\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Imagery|s3\.amazonaws\.com\/elevation-tiles-prod)\/.*/,
+          urlPattern: /^https:\/\/((server|clarity\.maptiles)\.arcgis(online)?\.com\/arcgis\/rest\/services\/World_Imagery|s3\.amazonaws\.com\/elevation-tiles-prod)\/.*/i,
           handler: 'CacheFirst',
           options: { cacheName: 'map-tiles', expiration: { maxEntries: 40000, maxAgeSeconds: 60 * 60 * 24 * 180 }, cacheableResponse: { statuses: [0, 200] } },
         },

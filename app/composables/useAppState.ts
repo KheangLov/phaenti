@@ -109,6 +109,13 @@ const showExplored = pref('phaenti:explored', true)
 /** Satellite: roads & labels on top, and 3D terrain */
 const satLabels = pref('phaenti:sat-labels', true)
 const satTerrain = pref('phaenti:sat-terrain', false)
+/** Sharper satellite on high-res screens (more data) */
+const satHD = pref('phaenti:sat-hd', true)
+const satSource = ref<'latest' | 'clarity'>('clarity')
+if (import.meta.client) {
+  try { if (localStorage.getItem('phaenti:sat-source') === 'latest') satSource.value = 'latest' } catch { /* ignore */ }
+  watch(satSource, (v) => { try { localStorage.setItem('phaenti:sat-source', v) } catch { /* ignore */ } })
+}
 
 export function useAppState() {
   function select(id: string | null) {
@@ -155,7 +162,7 @@ export function useAppState() {
     selectedId, draft, area, picking, pendingCategory, searching, filter, snap, mapApi,
     route, measuring, measurePts, measureClosed, openRoute, photoViewer, discoverOpen,
     camera, zooming, locateMode,
-    showBoundaries, showExplored, styleChoice, satLabels, satTerrain,
+    showBoundaries, showExplored, styleChoice, satLabels, satTerrain, satHD, satSource,
     select, openDraft, openArea, closeAll,
   }
 }

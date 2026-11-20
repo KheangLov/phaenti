@@ -2,6 +2,46 @@
   <UDrawer v-model:open="open" :title="t('styles.title')" :description="t('styles.desc')">
     <template #body>
       <div class="pb-safe">
+        <!-- Satellite options -->
+        <div v-if="current.satellite" class="mb-4 divide-y divide-(--ui-border) overflow-hidden rounded-2xl border border-(--ui-border)">
+          <div class="px-4 py-3">
+            <p class="mb-2 flex items-center gap-2 text-sm"><UIcon name="i-lucide-satellite" class="size-5 text-violet-500" />{{ t('styles.satSource') }}</p>
+            <div class="grid grid-cols-2 gap-1.5 rounded-xl bg-(--ui-bg-elevated) p-1">
+              <button
+                v-for="o in (['clarity', 'latest'] as const)"
+                :key="o"
+                class="rounded-lg px-2 py-2 text-left transition"
+                :class="satSource === o ? 'bg-(--ui-bg) shadow-sm' : 'text-(--ui-text-muted)'"
+                @click="satSource = o"
+              >
+                <span class="block text-[13px] font-semibold">{{ t(`styles.sat_${o}`) }}</span>
+                <span class="block text-[11px] text-(--ui-text-muted)">{{ t(`styles.sat_${o}Hint`) }}</span>
+              </button>
+            </div>
+          </div>
+          <label class="flex items-center gap-3 px-4 py-3">
+            <UIcon name="i-lucide-scan-eye" class="size-5 text-emerald-500" />
+            <span class="flex-1">
+              <span class="block text-sm">{{ t('styles.satHD') }}</span>
+              <span class="block text-xs text-(--ui-text-muted)">{{ t('styles.satHDHint') }}</span>
+            </span>
+            <USwitch v-model="satHD" />
+          </label>
+          <label class="flex items-center gap-3 px-4 py-3">
+            <UIcon name="i-lucide-tags" class="size-5 text-amber-500" />
+            <span class="flex-1 text-sm">{{ t('styles.satLabels') }}</span>
+            <USwitch v-model="satLabels" />
+          </label>
+          <label class="flex items-center gap-3 px-4 py-3">
+            <UIcon name="i-lucide-mountain-snow" class="size-5 text-sky-500" />
+            <span class="flex-1">
+              <span class="block text-sm">{{ t('styles.satTerrain') }}</span>
+              <span class="block text-xs text-(--ui-text-muted)">{{ t('styles.satTerrainHint') }}</span>
+            </span>
+            <USwitch v-model="satTerrain" />
+          </label>
+        </div>
+
         <div class="grid grid-cols-3 gap-2.5">
           <motion.button
             v-for="(s, i) in cards"
@@ -54,23 +94,6 @@
           </label>
         </div>
 
-        <!-- Satellite options -->
-        <div v-if="current.satellite" class="mt-3 divide-y divide-(--ui-border) overflow-hidden rounded-2xl border border-(--ui-border)">
-          <label class="flex items-center gap-3 px-4 py-3">
-            <UIcon name="i-lucide-tags" class="size-5 text-amber-500" />
-            <span class="flex-1 text-sm">{{ t('styles.satLabels') }}</span>
-            <USwitch v-model="satLabels" />
-          </label>
-          <label class="flex items-center gap-3 px-4 py-3">
-            <UIcon name="i-lucide-mountain-snow" class="size-5 text-sky-500" />
-            <span class="flex-1">
-              <span class="block text-sm">{{ t('styles.satTerrain') }}</span>
-              <span class="block text-xs text-(--ui-text-muted)">{{ t('styles.satTerrainHint') }}</span>
-            </span>
-            <USwitch v-model="satTerrain" />
-          </label>
-        </div>
-
         <p v-if="current.extrude" class="mt-1 text-center text-[11px] text-(--ui-text-muted)">{{ t('styles.tip3d') }}</p>
       </div>
     </template>
@@ -83,7 +106,7 @@ import { MAP_STYLES, AUTO_STYLE, styleById, type Swatch } from '~/utils/mapStyle
 import { WHITE } from '~/utils/colors'
 
 const open = defineModel<boolean>('open', { default: false })
-const { styleChoice, showBoundaries, showExplored, satLabels, satTerrain } = useAppState()
+const { styleChoice, showBoundaries, showExplored, satLabels, satTerrain, satHD, satSource } = useAppState()
 const colorMode = useColorMode()
 const { t, styleLabel, styleTag } = useLang()
 
