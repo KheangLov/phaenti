@@ -74,7 +74,7 @@ Logic lives in `app/composables/useHidden.ts`.
 
 ## Discover & photos
 
-- **Discover Cambodia** (✨ button next to the filters, or ⋯ menu): 78 hand-picked famous and beautiful places — Angkor temples, Preah Vihear, Koh Ker, Phnom Penh landmarks, Kampot/Kep, Koh Kong (Tatai, Peam Krasaop mangroves, Koh Kong Island, Koh Sdach islands and Ghost Island, Koh Yor / Bak Khlong, the Koh Kong Bridge, Chhay Chrei, Chhay Khpuos and Chhay Keur waterfalls, Chi Phat, Areng, Mrech Kangkep), the islands, waterfalls in Mondulkiri and Ratanakiri. 13 are marked 🔥 **Trending** (picked from 2026 social media and travel news: Kampot's seahorse statue, Koh Rong's viral dead tree, Chaktomuk Walk Street, Factory Phnom Penh, Koh Pich, Techo airport, Kampong Khleang, Mondulkiri's Sea Forest, Phnom 1500, Khnorng Phsar, the salt fields…) and have their own filter. Save one with **+** or all at once to *Want to go* (with Undo).
+- **Discover Cambodia** (✨ button next to the filters, or ⋯ menu): 86 hand-picked famous and beautiful places — Angkor temples, Preah Vihear, Koh Ker, Phnom Penh landmarks, Kampot/Kep, Koh Kong (Tatai, Peam Krasaop mangroves, Koh Kong Island, Koh Sdach islands and Ghost Island, Koh Yor / Bak Khlong, the Koh Kong Bridge, Chhay Chrei, Chhay Khpuos and Chhay Keur waterfalls, Chi Phat, Areng, Mrech Kangkep), the islands, waterfalls in Mondulkiri and Ratanakiri. 18 are marked 🔥 **Trending** (picked from 2026 social media and travel news: the newly reopened West Mebon temple, the Mekong Zipline, SM Art Center, Kep West, Kampot's seahorse statue, Koh Rong's viral dead tree, Chaktomuk Walk Street, Factory Phnom Penh, Koh Pich, Techo airport, Kampong Khleang, Mondulkiri's Sea Forest, Phnom 1500, Khnorng Phsar, the salt fields…) and have their own filter. Save one with **+** or all at once to *Want to go* (with Undo).
   - The list lives in `public/discover/cambodia.json` (names in English and Khmer, short notes, coordinates checked against province and commune boundaries). Pins that could only be placed roughly carry a `geo` hint: the phone asks OpenStreetMap (Photon) once and moves the pin to a nearby match.
   - On the phone, Wikipedia adds a photo, a short description and exact coordinates (only when they agree with ours within 8 km). Answers are cached for 30 days; photos are cached by the service worker for offline use.
 - **Photos on any place**: add from the camera/gallery (shrunk to 1600 px WebP and kept on the device in IndexedDB) or paste an image link. Tap to view full-screen, swipe, make cover, remove (with Undo). Backups include device photos.
@@ -84,6 +84,13 @@ Logic lives in `app/composables/useHidden.ts`.
 - **Route** on any place or search result: start from your location, one of your saved homes/offices/family, or the map centre; choose car, moto, bike or walk. Shows time, distance, arrival time and turn-by-turn steps (English or Khmer), then hands off to Google Maps for live navigation.
 - Routes come from the free community [Valhalla](https://valhalla1.openstreetmap.de) server, falling back to [OSRM](https://routing.openstreetmap.de). Both allow about one request per second and need a connection. Routes never pass through the hidden country (`public/geo/route-avoid-th.json`).
 - **Measure** (ruler button or ⋯ menu): tap points to measure a path, drag points to adjust, tap the first point to close the shape and get its area and perimeter. Back closes it.
+
+## Bottom sheet
+
+- Drag the sheet by its content, not only the handle: swipe up to expand, and at full height pull down from the top of the list to shrink it. Flings are velocity-aware and a drag never "taps" the row under your finger.
+- The map dims as the sheet reaches full height (tap the dimmed strip to go back to half).
+- The frosted-glass blur is switched off while the sheet moves or is full, and comes back when it settles: re-blurring the map every frame was the heaviest thing on screen.
+- Respects "reduce motion" in system settings.
 
 ## Speed
 
