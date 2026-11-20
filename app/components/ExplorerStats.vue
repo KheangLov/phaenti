@@ -51,7 +51,7 @@
 import { motion } from 'motion-v'
 import { explored, ADMIN_TOTALS } from '~/composables/useAdmin'
 
-const { mapApi, showExplored } = useAppState()
+const { mapApi, showExplored, snap } = useAppState()
 const { t } = useLang()
 
 const rows = computed(() => [
@@ -63,6 +63,7 @@ const pct = computed(() => Math.round((explored.value.provinces / ADMIN_TOTALS.p
 
 function showCambodia() {
   showExplored.value = true
+  snap.value = 'peek'
   mapApi.value?.fitBounds([102.3, 10.4, 107.65, 14.7], 7)
 }
 </script>

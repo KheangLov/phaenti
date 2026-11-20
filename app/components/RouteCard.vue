@@ -97,7 +97,7 @@
         </button>
         <ol v-if="showSteps" class="mt-1 divide-y divide-(--ui-border)">
           <li v-for="(s, i) in result.steps" :key="i">
-            <button class="flex w-full items-center gap-3 py-2.5 text-left active:bg-(--ui-bg-elevated)" @click="mapApi?.flyTo(s.at[0], s.at[1], 17)">
+            <button class="flex w-full items-center gap-3 py-2.5 text-left active:bg-(--ui-bg-elevated)" @click="snap = 'peek'; mapApi?.flyTo(s.at[0], s.at[1], 17)">
               <span class="grid size-9 shrink-0 place-items-center rounded-full bg-(--ui-bg-elevated)">
                 <UIcon :name="stepIcon(s.type)" class="size-4.5" :style="{ color: modeColor }" />
               </span>
@@ -121,7 +121,7 @@ import { PERSONAL } from '~/utils/categories'
 import type { LngLat } from '~/utils/geo'
 
 const props = defineProps<{ route: RouteRequest }>()
-const { route: routeRef, mapApi, closeAll } = useAppState()
+const { route: routeRef, mapApi, closeAll, snap } = useAppState()
 const { places } = usePlaces()
 const { t, isKm, catLabel, locale } = useLang()
 

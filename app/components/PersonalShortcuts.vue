@@ -69,6 +69,7 @@ function open(c: Category & { places: Place[] }) {
   filter.value = filter.value === c.id ? 'all' : c.id
   const lngs = c.places.map(p => p.lng)
   const lats = c.places.map(p => p.lat)
+  snap.value = 'peek'
   mapApi.value?.fitBounds([Math.min(...lngs), Math.min(...lats), Math.max(...lngs), Math.max(...lats)], 15)
 }
 </script>

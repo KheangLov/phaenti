@@ -41,7 +41,7 @@ const { t } = useLang()
 
 let map: MLMap | null = null
 let ml: typeof import('maplibre-gl') | null = null
-const { styleChoice } = useAppState()
+const { styleChoice, snap } = useAppState()
 const styleDef = computed(() => styleById(styleChoice.value === AUTO_STYLE ? (colorMode.value === 'dark' ? 'dark' : 'liberty') : styleChoice.value))
 const isDark = computed(() => styleDef.value.dark)
 let fonts = { regular: ['Noto Sans Regular'], bold: ['Noto Sans Bold'], italic: ['Noto Sans Italic'] }
@@ -676,9 +676,11 @@ function apply3D() {
 }
 
 // ---------- Camera helpers ----------
+// Keep the target in the part of the map the sheet leaves visible
 function sheetPadding() {
   const h = window.innerHeight
-  return { top: 90, bottom: Math.round(h * 0.45), left: 24, right: 24 }
+  const bottom = snap.value === 'peek' ? 180 : Math.round(h * 0.52) + 16
+  return { top: 90, bottom: Math.min(bottom, h - 200), left: 24, right: 24 }
 }
 
 function flyTo(lng: number, lat: number, zoom?: number) {
@@ -782,6 +784,10 @@ onMounted(async () => {
   setTimeout(() => (loaded.value = true), 6000)
 
   map.on('movestart', () => emit('moving', true))
+  // Panning the map by hand lowers an expanded list, like native maps apps
+  map.on('dragstart', () => {
+    if (snap.value !== 'peek' && !draft.value) snap.value = 'peek'
+  })
   map.on('moveend', () => {
     emit('moving', false)
     try {
@@ -822,6 +828,11 @@ onMounted(async () => {
     }
     if (selectedId.value || draft.value) {
       select(null)
+      return
+    }
+    // Tapping the map while the list is up just lowers the sheet to show the map
+    if (snap.value !== 'peek' && !area.value) {
+      snap.value = 'peek'
       return
     }
     if (showBoundaries.value) {

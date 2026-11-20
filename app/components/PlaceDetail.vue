@@ -73,7 +73,7 @@
         <UIcon name="i-lucide-share" class="size-5 text-(--ui-primary)" />
         {{ t('place.share') }}
       </button>
-      <button class="flex flex-col items-center gap-1 rounded-2xl bg-(--ui-bg-elevated) py-3 text-xs font-medium active:scale-95 transition" @click="mapApi?.flyTo(place.lng, place.lat, 16)">
+      <button class="flex flex-col items-center gap-1 rounded-2xl bg-(--ui-bg-elevated) py-3 text-xs font-medium active:scale-95 transition" @click="snap = 'peek'; mapApi?.flyTo(place.lng, place.lat, 16)">
         <UIcon name="i-lucide-focus" class="size-5 text-amber-500" />
         {{ t('place.zoomTo') }}
       </button>
@@ -167,7 +167,7 @@ import { placeAdmin } from '~/composables/useAdmin'
 
 const props = defineProps<{ place: Place }>()
 const { update, remove, restore } = usePlaces()
-const { select, openArea, openRoute, mapApi: mapApiRef } = useAppState()
+const { select, openArea, openRoute, snap, mapApi: mapApiRef } = useAppState()
 const admin = useAdmin()
 
 const areas = computed(() => {

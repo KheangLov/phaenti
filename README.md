@@ -89,6 +89,7 @@ Logic lives in `app/composables/useHidden.ts`.
 
 - Drag the sheet by its content, not only the handle: swipe up to expand, and at full height pull down from the top of the list to shrink it. Flings are velocity-aware and a drag never "taps" the row under your finger.
 - The map dims as the sheet reaches full height (tap the dimmed strip to go back to half).
+- Tapping or panning the map lowers an expanded sheet, and "View" / "Zoom to" / route-step taps lower it so you can see the result on the map.
 - The frosted-glass blur is switched off while the sheet moves or is full, and comes back when it settles: re-blurring the map every frame was the heaviest thing on screen.
 - Respects "reduce motion" in system settings.
 
