@@ -13,7 +13,7 @@ export default defineNuxtConfig({
       scan: true,
       sizeLimitKb: 96,
       // Icons referenced dynamically (categories)
-      icons: ['utensils', 'coffee', 'wine', 'landmark', 'trees', 'umbrella', 'mountain', 'bed-double', 'shopping-bag', 'palette', 'plane', 'map-pin', 'map', 'building-2', 'home', 'flag', 'history', 'link', 'navigation', 'search', 'x', 'chevron-right', 'arrow-up-left', 'house', 'briefcase-business', 'users-round', 'heart-handshake', 'car-front', 'motorbike', 'bike', 'footprints', 'circle-dot', 'flag', 'arrow-up', 'arrow-up-right', 'corner-up-right', 'undo-2', 'corner-up-left', 'split', 'merge', 'rotate-cw', 'ship', 'route', 'ruler', 'sparkles', 'flame', 'compass', 'locate', 'locate-fixed', 'banknote', 'fuel', 'pill', 'hospital', 'tags', 'mountain-snow', 'satellite', 'scan-eye', 'bookmark-plus', 'bookmark-check', 'bookmark-minus', 'badge-check', 'image', 'image-off', 'image-plus', 'camera', 'link', 'link-2-off', 'external-link', 'star', 'loader-circle', 'utensils', 'coffee', 'wine', 'landmark', 'trees', 'umbrella', 'mountain', 'bed-double', 'shopping-bag', 'palette', 'plane', 'map-pin'].map(i => `lucide:${i}`),
+      icons: ['utensils', 'coffee', 'wine', 'landmark', 'trees', 'umbrella', 'mountain', 'bed-double', 'shopping-bag', 'palette', 'plane', 'map-pin', 'map', 'building-2', 'home', 'flag', 'history', 'link', 'navigation', 'search', 'x', 'chevron-right', 'arrow-up-left', 'house', 'briefcase-business', 'users-round', 'heart-handshake', 'car-front', 'motorbike', 'bike', 'footprints', 'circle-dot', 'flag', 'arrow-up', 'arrow-up-right', 'corner-up-right', 'undo-2', 'corner-up-left', 'split', 'merge', 'rotate-cw', 'ship', 'route', 'ruler', 'sparkles', 'flame', 'compass', 'locate', 'locate-fixed', 'banknote', 'fuel', 'pill', 'hospital', 'tags', 'mountain-snow', 'satellite', 'scan-eye', 'traffic-cone', 'person-standing', 'key-round', 'external-link', 'bookmark-plus', 'bookmark-check', 'bookmark-minus', 'badge-check', 'image', 'image-off', 'image-plus', 'camera', 'link', 'link-2-off', 'external-link', 'star', 'loader-circle', 'utensils', 'coffee', 'wine', 'landmark', 'trees', 'umbrella', 'mountain', 'bed-double', 'shopping-bag', 'palette', 'plane', 'map-pin'].map(i => `lucide:${i}`),
     },
   },
   colorMode: { preference: 'system', fallback: 'light' },
@@ -49,10 +49,23 @@ export default defineNuxtConfig({
     },
   },
 
+  // Optional free keys for live layers (can also be pasted in the app)
+  runtimeConfig: { public: { tomtomKey: '', mapillaryToken: '' } },
+
   experimental: { payloadExtraction: false },
 
   vite: {
-    build: { target: 'es2022', cssCodeSplit: true },
+    build: {
+      target: 'es2022',
+      cssCodeSplit: true,
+      rollupOptions: {
+        output: {
+          // Street-photo viewer gets its own named chunk so the service worker can skip it
+          manualChunks: (id: string) => (id.includes('node_modules/mapillary-js') ? 'mapillary' : undefined),
+          chunkFileNames: (c: { name: string }) => (c.name === 'mapillary' ? '_nuxt/mapillary.[hash].js' : '_nuxt/[hash].js'),
+        },
+      },
+    },
     optimizeDeps: { include: ['maplibre-gl', 'dexie', 'motion-v'] },
   },
 
@@ -97,7 +110,7 @@ export default defineNuxtConfig({
       navigateFallbackDenylist: [/^\/admin\//],
       // App shell + Cambodia boundaries, names and search index: all available offline from first launch
       globPatterns: ['**/*.{js,mjs,css,html,png,svg,ico,webmanifest,woff2}', 'admin/**/*.{json,pbf}', 'styles/*.json', 'geo/*.json', 'discover/*.json'],
-      globIgnores: ['screenshots/**'],
+      globIgnores: ['screenshots/**', '_nuxt/mapillary.*'],
       maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       cleanupOutdatedCaches: true,
       // Nuxt adds its prerendered /200 and /404 shells; they're identical to "/" and
@@ -161,6 +174,17 @@ export default defineNuxtConfig({
           urlPattern: /^https:\/\/((server|clarity\.maptiles)\.arcgis(online)?\.com\/arcgis\/rest\/services\/World_Imagery|s3\.amazonaws\.com\/elevation-tiles-prod)\/.*/i,
           handler: 'CacheFirst',
           options: { cacheName: 'map-tiles', expiration: { maxEntries: 40000, maxAgeSeconds: 60 * 60 * 24 * 180 }, cacheableResponse: { statuses: [0, 200] } },
+        },
+        {
+          // Live traffic must never come from cache
+          urlPattern: /^https:\/\/api\.tomtom\.com\/.*/,
+          handler: 'NetworkOnly',
+        },
+        {
+          // Street-level photo coverage and image metadata
+          urlPattern: /^https:\/\/(tiles|graph)\.mapillary\.com\/.*/,
+          handler: 'NetworkFirst',
+          options: { cacheName: 'street', networkTimeoutSeconds: 6, expiration: { maxEntries: 600, maxAgeSeconds: 60 * 60 * 24 * 14 }, cacheableResponse: { statuses: [0, 200] } },
         },
         {
           // Routing is live only: never serve a stale route

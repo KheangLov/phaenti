@@ -81,6 +81,40 @@
           </motion.button>
         </div>
 
+        <!-- Live layers -->
+        <h3 class="mt-5 mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-(--ui-text-dimmed)">{{ t('live.title') }}</h3>
+        <div class="divide-y divide-(--ui-border) overflow-hidden rounded-2xl border border-(--ui-border)">
+          <div class="px-4 py-3">
+            <label class="flex items-center gap-3">
+              <UIcon name="i-lucide-traffic-cone" class="size-5 text-orange-500" />
+              <span class="flex-1">
+                <span class="block text-sm">{{ t('live.traffic') }}</span>
+                <span class="block text-xs text-(--ui-text-muted)">{{ keys.tomtom.value ? t('live.trafficHint') : t('live.needKey', { who: 'TomTom' }) }}</span>
+              </span>
+              <USwitch v-model="showTraffic" />
+            </label>
+            <div v-if="showTraffic && !keys.tomtom.value" class="mt-3 space-y-2">
+              <KeyInput v-model="keys.tomtom.value" placeholder="TomTom API key" href="https://developer.tomtom.com/user/register" />
+              <a :href="trafficInGoogle" target="_blank" rel="noopener" class="flex items-center justify-center gap-1.5 rounded-xl bg-(--ui-bg-elevated) py-2 text-xs font-semibold">
+                <UIcon name="i-lucide-external-link" class="size-3.5" /> {{ t('live.openGoogleTraffic') }}
+              </a>
+            </div>
+          </div>
+          <div class="px-4 py-3">
+            <label class="flex items-center gap-3">
+              <UIcon name="i-lucide-person-standing" class="size-5 text-emerald-500" />
+              <span class="flex-1">
+                <span class="block text-sm">{{ t('live.street') }}</span>
+                <span class="block text-xs text-(--ui-text-muted)">{{ keys.mapillary.value ? t('live.streetHint') : t('live.needKey', { who: 'Mapillary' }) }}</span>
+              </span>
+              <USwitch v-model="showStreet" />
+            </label>
+            <div v-if="showStreet && !keys.mapillary.value" class="mt-3">
+              <KeyInput v-model="keys.mapillary.value" placeholder="MLY|… client token" href="https://www.mapillary.com/dashboard/developers" />
+            </div>
+          </div>
+        </div>
+
         <div class="mt-5 divide-y divide-(--ui-border) overflow-hidden rounded-2xl border border-(--ui-border)">
           <label class="flex items-center gap-3 px-4 py-3">
             <UIcon name="i-lucide-square-dashed" class="size-5 text-violet-500" />
@@ -104,9 +138,15 @@
 import { motion } from 'motion-v'
 import { MAP_STYLES, AUTO_STYLE, styleById, type Swatch } from '~/utils/mapStyles'
 import { WHITE } from '~/utils/colors'
+import { googleTrafficUrl } from '~/composables/useKeys'
 
 const open = defineModel<boolean>('open', { default: false })
-const { styleChoice, showBoundaries, showExplored, satLabels, satTerrain, satHD, satSource } = useAppState()
+const { styleChoice, showBoundaries, showExplored, satLabels, satTerrain, satHD, satSource, showTraffic, showStreet, camera, mapApi } = useAppState()
+const keys = useKeys()
+const trafficInGoogle = computed(() => {
+  const c = mapApi.value?.center() ?? { lat: 11.56, lng: 104.92 }
+  return googleTrafficUrl(c.lat, c.lng, Math.max(camera.value.zoom, 12))
+})
 const colorMode = useColorMode()
 const { t, styleLabel, styleTag } = useLang()
 

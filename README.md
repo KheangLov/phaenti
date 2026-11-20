@@ -85,6 +85,16 @@ Logic lives in `app/composables/useHidden.ts`.
 - Routes come from the free community [Valhalla](https://valhalla1.openstreetmap.de) server, falling back to [OSRM](https://routing.openstreetmap.de). Both allow about one request per second and need a connection. Routes never pass through the hidden country (`public/geo/route-avoid-th.json`).
 - **Measure** (ruler button or ⋯ menu): tap points to measure a path, drag points to adjust, tap the first point to close the shape and get its area and perimeter. Back closes it.
 
+## Street View & traffic
+
+- **Street button** on every place and dropped pin: opens the nearest street-level photo *inside the app* (Mapillary, up to 250 m away) — swipe/tap arrows to walk along the street, the green dot on the map follows you. With no photo nearby (or no key) it opens **Google Street View** in Google Maps instead.
+- **Street View photos layer** (⧉ Map style → Live layers): green lines where street photos exist; from zoom 14 tap a dot to look around.
+- **Traffic layer** (Live layers): live road speeds from TomTom, refreshed every 2 minutes (green = free-flowing, red = slow). Without a key there's a one-tap "Show traffic in Google Maps".
+- Both need a **free key**, pasted in the app (kept on the device) or set at build time:
+  - `NUXT_PUBLIC_TOMTOM_KEY` — https://developer.tomtom.com (50,000 free map tiles a day, no card)
+  - `NUXT_PUBLIC_MAPILLARY_TOKEN` — https://www.mapillary.com/dashboard/developers (client token `MLY|…`)
+- The Mapillary viewer (~1 MB) downloads only the first time you open a street photo and isn't stored for offline.
+
 ## Google Maps–style controls
 
 - **Rotate & tilt** with two fingers (right-drag on desktop). A **compass** appears as soon as the map is turned or tilted; tap it to point north again.

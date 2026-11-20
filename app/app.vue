@@ -4,7 +4,7 @@
       <MapView ref="mapView" @moving="moving = $event" />
 
       <!-- Top: search -->
-      <SearchOverlay ref="search" :hidden="picking || measuring" :chips="snap !== 'full'" />
+      <SearchOverlay ref="search" :hidden="picking || measuring || !!streetView" :chips="snap !== 'full'" />
 
       <!-- Scale bar while zooming -->
       <div class="absolute left-3 z-10" :style="{ top: 'calc(max(env(safe-area-inset-top), 12px) + 112px)' }">
@@ -155,7 +155,7 @@
       <!-- Bottom sheet -->
       <MeasureBar />
 
-      <BottomSheet v-model:snap="snap" :content-key="contentKey" :hidden="picking || measuring" :peek="PEEK" :dismissible="!!(draft || selected || area || route)" @dismiss="closeAll">
+      <BottomSheet v-model:snap="snap" :content-key="contentKey" :hidden="picking || measuring || !!streetView" :peek="PEEK" :dismissible="!!(draft || selected || area || route)" @dismiss="closeAll">
         <template #header>
           <div v-if="!draft && !selected && !area && !route" class="px-5 pb-3">
             <div class="flex items-end justify-between">
@@ -226,6 +226,7 @@
       <OfflineSheet v-model:open="offlineOpen" />
       <DiscoverSheet />
       <PhotoViewer />
+      <StreetViewer />
 
       <input ref="fileInput" type="file" accept=".json,.geojson,application/json,application/geo+json" class="hidden" @change="onImport">
     </main>
@@ -244,7 +245,7 @@ const PEEK = 156
 const spring = { type: 'spring', stiffness: 420, damping: 38 } as const
 
 const { places, toExport, importFile } = usePlaces()
-const { camera, locateMode, photoViewer, discoverOpen, route, measuring, measurePts, measureClosed, selectedId, draft, area, picking, pendingCategory, searching, filter, snap, mapApi, closeAll, showBoundaries, showExplored } = useAppState()
+const { streetView, camera, locateMode, photoViewer, discoverOpen, route, measuring, measurePts, measureClosed, selectedId, draft, area, picking, pendingCategory, searching, filter, snap, mapApi, closeAll, showBoundaries, showExplored } = useAppState()
 const colorMode = useColorMode()
 const toast = useToast()
 const { $pwa } = useNuxtApp()
@@ -345,6 +346,7 @@ useBackLayer('offline', () => offlineOpen.value, () => (offlineOpen.value = fals
 useBackLayer('install', () => installOpen.value, () => (installOpen.value = false))
 useBackLayer('discover', () => discoverOpen.value, () => (discoverOpen.value = false))
 useBackLayer('photo', () => !!photoViewer.value, () => (photoViewer.value = null))
+useBackLayer('street', () => !!streetView.value, () => (streetView.value = null))
 
 // Status-bar colour follows the app theme
 watch(() => colorMode.value, (m) => {

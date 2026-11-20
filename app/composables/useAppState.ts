@@ -27,7 +27,7 @@ export type SheetSnap = 'peek' | 'half' | 'full'
 export type Filter = 'all' | 'been' | 'planned' | PersonalId
 
 export interface MapApi {
-  flyTo: (lng: number, lat: number, zoom?: number) => void
+  flyTo: (lng: number, lat: number, zoom?: number, pad?: Partial<{ top: number; bottom: number; left: number; right: number }>) => void
   fitBounds: (bbox: [number, number, number, number], maxZoom?: number) => void
   center: () => { lng: number; lat: number }
   zoom: () => number
@@ -111,6 +111,11 @@ const satLabels = pref('phaenti:sat-labels', true)
 const satTerrain = pref('phaenti:sat-terrain', false)
 /** Sharper satellite on high-res screens (more data) */
 const satHD = pref('phaenti:sat-hd', true)
+/** Live layers */
+const showTraffic = pref('phaenti:traffic', false)
+const showStreet = pref('phaenti:street', false)
+/** Street-level photo viewer (Mapillary) */
+const streetView = ref<{ imageId: string; lat: number; lng: number } | null>(null)
 const satSource = ref<'latest' | 'clarity'>('clarity')
 if (import.meta.client) {
   try { if (localStorage.getItem('phaenti:sat-source') === 'latest') satSource.value = 'latest' } catch { /* ignore */ }
@@ -162,7 +167,7 @@ export function useAppState() {
     selectedId, draft, area, picking, pendingCategory, searching, filter, snap, mapApi,
     route, measuring, measurePts, measureClosed, openRoute, photoViewer, discoverOpen,
     camera, zooming, locateMode,
-    showBoundaries, showExplored, styleChoice, satLabels, satTerrain, satHD, satSource,
+    showBoundaries, showExplored, styleChoice, satLabels, satTerrain, satHD, satSource, showTraffic, showStreet, streetView,
     select, openDraft, openArea, closeAll,
   }
 }

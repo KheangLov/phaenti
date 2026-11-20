@@ -61,13 +61,17 @@
     </template>
 
     <!-- Quick actions -->
-    <div class="mt-4 grid grid-cols-3 gap-2">
+    <div class="mt-4 grid grid-cols-4 gap-2">
       <button
         class="flex flex-col items-center gap-1 rounded-2xl bg-(--ui-bg-elevated) py-3 text-xs font-medium active:scale-95 transition"
         @click="openRoute({ lat: place.lat, lng: place.lng, name: place.name, kind: 'place' })"
       >
         <UIcon name="i-lucide-route" class="size-5 text-sky-500" />
         {{ t('place.route') }}
+      </button>
+      <button class="flex flex-col items-center gap-1 rounded-2xl bg-(--ui-bg-elevated) py-3 text-xs font-medium active:scale-95 transition" :disabled="street.busy.value" @click="street.openAt(place.lat, place.lng)">
+        <UIcon :name="street.busy.value ? 'i-lucide-loader-circle' : 'i-lucide-person-standing'" class="size-5 text-emerald-500" :class="street.busy.value ? 'animate-spin' : ''" />
+        {{ t('street.short') }}
       </button>
       <button class="flex flex-col items-center gap-1 rounded-2xl bg-(--ui-bg-elevated) py-3 text-xs font-medium active:scale-95 transition" @click="share">
         <UIcon name="i-lucide-share" class="size-5 text-(--ui-primary)" />
@@ -168,6 +172,7 @@ import { placeAdmin } from '~/composables/useAdmin'
 const props = defineProps<{ place: Place }>()
 const { update, remove, restore } = usePlaces()
 const { select, openArea, openRoute, snap, mapApi: mapApiRef } = useAppState()
+const street = useStreet()
 const admin = useAdmin()
 
 const areas = computed(() => {

@@ -93,9 +93,14 @@
 
     <div class="mt-4 flex items-center justify-between text-xs text-(--ui-text-dimmed)">
       <span>{{ formatCoords(draft.lat, draft.lng) }}</span>
+      <span class="flex items-center gap-1.5">
+      <button class="inline-flex items-center gap-1 rounded-full bg-(--ui-bg-elevated) px-2.5 py-1 font-semibold text-emerald-600 dark:text-emerald-400" @click="street.openAt(draft.lat, draft.lng)">
+        <UIcon :name="street.busy.value ? 'i-lucide-loader-circle' : 'i-lucide-person-standing'" class="size-3.5" :class="street.busy.value ? 'animate-spin' : ''" /> {{ t('street.short') }}
+      </button>
       <button class="inline-flex items-center gap-1 rounded-full bg-(--ui-bg-elevated) px-2.5 py-1 font-semibold text-sky-600 dark:text-sky-400" @click="openRoute({ lat: draft.lat, lng: draft.lng, name: name || draft.name, kind: 'place' })">
         <UIcon name="i-lucide-route" class="size-3.5" /> {{ t('place.route') }}
       </button>
+      </span>
     </div>
   </div>
 </template>
@@ -110,6 +115,7 @@ import type { Draft } from '~/composables/useAppState'
 const props = defineProps<{ draft: Draft }>()
 const { add } = usePlaces()
 const { closeAll, select, mapApi, openRoute, draft: draftRef } = useAppState()
+const street = useStreet()
 const admin = useAdmin()
 const toast = useToast()
 const { t, pick, catLabel } = useLang()

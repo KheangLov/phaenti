@@ -48,7 +48,8 @@ const { t } = useLang()
 
 let map: MLMap | null = null
 let ml: typeof import('maplibre-gl') | null = null
-const { styleChoice, snap, camera, zooming, locateMode, satLabels, satTerrain, satHD, satSource } = useAppState()
+const { styleChoice, snap, camera, zooming, locateMode, satLabels, satTerrain, satHD, satSource, showTraffic, showStreet, streetView } = useAppState()
+const keys = useKeys()
 const styleDef = computed(() => styleById(styleChoice.value === AUTO_STYLE ? (colorMode.value === 'dark' ? 'dark' : 'liberty') : styleChoice.value))
 const isDark = computed(() => styleDef.value.dark)
 let fonts = { regular: ['Noto Sans Regular'], bold: ['Noto Sans Bold'], italic: ['Noto Sans Italic'] }
@@ -130,7 +131,76 @@ async function addLayers() {
   syncRoute(false)
   syncMeasure()
   applySatellite()
+  applyLive()
 }
+
+// ---------- Live layers: traffic (TomTom) and street-level photos (Mapillary) ----------
+let trafficTimer: ReturnType<typeof setInterval> | undefined
+function trafficTiles() {
+  // Bucket by 2 minutes so tiles refresh but nearby requests still share the browser cache
+  const t = Math.floor(Date.now() / 120000)
+  return [`https://api.tomtom.com/traffic/map/4/tile/flow/${isDark.value ? 'relative0-dark' : 'relative0'}/{z}/{x}/{y}.png?key=${encodeURIComponent(keys.tomtom.value)}&tileSize=512&thickness=8&t=${t}`]
+}
+function applyLive() {
+  if (!map || !layersReady) return
+  // Traffic flow, under the labels; the hidden-country "sea" still covers it
+  const wantTraffic = showTraffic.value && !!keys.tomtom.value
+  if (wantTraffic && !map.getSource('traffic')) {
+    map.addSource('traffic', { type: 'raster', tiles: trafficTiles(), tileSize: 512, minzoom: 6, maxzoom: 22 })
+    const before = map.getLayer('hidden-fill') ? 'hidden-fill' : undefined
+    map.addLayer({ id: 'traffic', type: 'raster', source: 'traffic', minzoom: 6, paint: { 'raster-opacity': 0.9, 'raster-fade-duration': 0 } }, before)
+    clearInterval(trafficTimer)
+    trafficTimer = setInterval(() => (map?.getSource('traffic') as unknown as { setTiles?: (t: string[]) => void })?.setTiles?.(trafficTiles()), 120000)
+  } else if (!wantTraffic && map.getSource('traffic')) {
+    clearInterval(trafficTimer)
+    map.removeLayer('traffic')
+    map.removeSource('traffic')
+  }
+  // Street-level photo coverage: green lines, then dots you can tap (from zoom 14)
+  const wantStreet = showStreet.value && !!keys.mapillary.value
+  if (wantStreet && !map.getSource('mly')) {
+    map.addSource('mly', {
+      type: 'vector', minzoom: 6, maxzoom: 14,
+      tiles: [`https://tiles.mapillary.com/maps/vtp/mly1_public/2/{z}/{x}/{y}?access_token=${encodeURIComponent(keys.mapillary.value)}`],
+    })
+    const before = map.getLayer('clusters') ? 'clusters' : undefined
+    map.addLayer({
+      id: 'mly-seq', type: 'line', source: 'mly', 'source-layer': 'sequence',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#05cb63', 'line-opacity': 0.85, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 1, 14, 3, 18, 5] },
+    }, before)
+    map.addLayer({
+      id: 'mly-img', type: 'circle', source: 'mly', 'source-layer': 'image', minzoom: 14,
+      paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 14, 3, 18, 6], 'circle-color': '#05cb63', 'circle-stroke-width': 1.5, 'circle-stroke-color': WHITE },
+    }, before)
+  } else if (!wantStreet && map.getSource('mly')) {
+    for (const l of ['mly-img', 'mly-seq']) if (map.getLayer(l)) map.removeLayer(l)
+    map.removeSource('mly')
+  }
+  syncStreetPos()
+}
+watch([showTraffic, showStreet, () => keys.tomtom.value, () => keys.mapillary.value], () => {
+  if (!map) return
+  // Keys changed: rebuild the sources with the new key
+  for (const [src, layers] of [['traffic', ['traffic']], ['mly', ['mly-img', 'mly-seq']]] as const) {
+    if (map.getSource(src)) {
+      for (const l of layers) if (map.getLayer(l)) map.removeLayer(l)
+      map.removeSource(src)
+    }
+  }
+  applyLive()
+})
+// Where the street photo you're looking at was taken
+function syncStreetPos() {
+  if (!map || !layersReady) return
+  if (!map.getSource('street-pos')) {
+    map.addSource('street-pos', { type: 'geojson', data: EMPTY })
+    map.addLayer({ id: 'street-pos', type: 'circle', source: 'street-pos', paint: { 'circle-radius': 9, 'circle-color': '#05cb63', 'circle-stroke-width': 3, 'circle-stroke-color': WHITE } })
+  }
+  const v = streetView.value
+  setData('street-pos', v ? pointFC(v.lng, v.lat) : EMPTY)
+}
+watch(streetView, syncStreetPos, { deep: true })
 
 // ---------- Satellite extras: labels on/off and 3D terrain ----------
 const DEM_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'
@@ -720,10 +790,10 @@ function sheetPadding() {
   return { top: 90, bottom: Math.min(bottom, h - 200), left: 24, right: 24 }
 }
 
-function flyTo(lng: number, lat: number, zoom?: number) {
+function flyTo(lng: number, lat: number, zoom?: number, pad?: Partial<{ top: number; bottom: number; left: number; right: number }>) {
   if (!map) return
   const z = zoom ?? Math.max(map.getZoom(), 14)
-  map.flyTo({ center: [lng, lat], zoom: z, padding: sheetPadding(), speed: 1.3, curve: 1.45, essential: false })
+  map.flyTo({ center: [lng, lat], zoom: z, padding: { ...sheetPadding(), ...pad }, speed: 1.3, curve: 1.45, essential: false })
 }
 
 function fitBounds(b: [number, number, number, number], maxZoom = 14) {
@@ -1003,6 +1073,15 @@ onMounted(async () => {
       return
     }
     const point = hits.find(h => h.layer.id === 'points')
+    if (!point && map.getLayer('mly-img')) {
+      const sv = map.queryRenderedFeatures([[e.point.x - 10, e.point.y - 10], [e.point.x + 10, e.point.y + 10]], { layers: ['mly-img'] })[0]
+      if (sv?.properties?.id) {
+        haptic('select')
+        const [lng, lat] = (sv.geometry as GeoJSON.Point).coordinates as [number, number]
+        streetView.value = { imageId: String(sv.properties.id), lat, lng }
+        return
+      }
+    }
     if (point) {
       haptic('select')
       select(point.properties.id)
