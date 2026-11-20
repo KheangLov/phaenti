@@ -16,6 +16,8 @@ export interface DiscoverPlace {
   lng: number
   blurb: string
   blurbKm: string
+  /** Approximate pin: ask OpenStreetMap for `q`, accept a hit within `r` km whose name contains `match` */
+  geo?: { q: string; match: string; r: number }
   /** From Wikipedia, when available */
   photo?: string
   page?: string
@@ -24,10 +26,13 @@ export interface DiscoverPlace {
 
 interface WikiInfo { lat?: number; lng?: number; photo?: string; page?: string; extract?: string }
 const CACHE_KEY = 'phaenti:discover-wiki'
+const GEO_KEY = 'phaenti:discover-geo'
 const MAX_AGE = 30 * 24 * 3600 * 1000
 
 const base = shallowRef<DiscoverPlace[]>([])
 const wiki = shallowRef<Record<string, WikiInfo>>({})
+/** id → OpenStreetMap position (or {} when nothing matched) */
+const osm = shallowRef<Record<string, { lat?: number; lng?: number }>>({})
 const loading = ref(false)
 const failed = ref(false)
 let started: Promise<void> | null = null
@@ -99,8 +104,43 @@ function start() {
     } finally {
       loading.value = false
     }
+    void refinePins()
   })()
   return started
+}
+
+/** Better pins for places we could only place roughly, one OpenStreetMap lookup per second */
+async function refinePins() {
+  let cached: Record<string, { lat?: number; lng?: number }> = {}
+  try { cached = JSON.parse(localStorage.getItem(GEO_KEY) || '{}') } catch { /* ignore */ }
+  osm.value = cached
+  const todo = base.value.filter(p => p.geo && !(p.id in cached) && !hasWikiPin(p))
+  if (!todo.length || navigator.onLine === false) return
+  const out = { ...cached }
+  for (const p of todo) {
+    try {
+      const q = new URLSearchParams({ q: p.geo!.q, lat: String(p.lat), lon: String(p.lng), limit: '8' })
+      const res = await fetch(`https://photon.komoot.io/api?${q}`)
+      if (!res.ok) break
+      const json = await res.json()
+      const hit = (json.features ?? []).find((f: any) => {
+        const [lng, lat] = f.geometry?.coordinates ?? []
+        const name = String(f.properties?.name ?? '').toLowerCase()
+        return Number.isFinite(lat) && name.includes(p.geo!.match) && haversineKm([p.lng, p.lat], [lng, lat]) <= p.geo!.r
+      })
+      out[p.id] = hit ? { lat: +hit.geometry.coordinates[1].toFixed(6), lng: +hit.geometry.coordinates[0].toFixed(6) } : {}
+      osm.value = { ...out }
+      localStorage.setItem(GEO_KEY, JSON.stringify(out))
+    } catch {
+      break
+    }
+    await new Promise(r => setTimeout(r, 1100))
+  }
+}
+
+function hasWikiPin(p: DiscoverPlace) {
+  const w = wiki.value[p.wiki]
+  return w?.lat != null && w.lng != null && haversineKm([p.lng, p.lat], [w.lng, w.lat]) < 8
 }
 
 const places = computed<DiscoverPlace[]>(() => base.value
@@ -108,9 +148,10 @@ const places = computed<DiscoverPlace[]>(() => base.value
     const w = wiki.value[p.wiki]
     // Trust Wikipedia's pin only when it agrees with ours (guards against a wrong article)
     const useWiki = w?.lat != null && w.lng != null && haversineKm([p.lng, p.lat], [w.lng, w.lat]) < 8
+    const o = osm.value[p.id]
     return {
       ...p,
-      ...(useWiki ? { lat: +w!.lat!.toFixed(6), lng: +w!.lng!.toFixed(6) } : {}),
+      ...(useWiki ? { lat: +w!.lat!.toFixed(6), lng: +w!.lng!.toFixed(6) } : o?.lat != null ? { lat: o.lat, lng: o.lng! } : {}),
       ...(w?.photo ? { photo: w.photo } : {}),
       ...(w?.page ? { page: w.page } : {}),
       ...(w?.extract ? { extract: w.extract } : {}),

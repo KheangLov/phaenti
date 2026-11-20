@@ -74,8 +74,8 @@ Logic lives in `app/composables/useHidden.ts`.
 
 ## Discover & photos
 
-- **Discover Cambodia** (✨ button next to the filters, or ⋯ menu): 52 hand-picked famous and beautiful places — Angkor temples, Preah Vihear, Koh Ker, Phnom Penh landmarks, Kampot/Kep, Koh Kong (Tatai, Peam Krasaop mangroves, Koh Kong Island, Chi Phat, Areng), the islands, waterfalls in Mondulkiri and Ratanakiri. Save one with **+** or all at once to *Want to go* (with Undo).
-  - The list lives in `public/discover/cambodia.json` (names in English and Khmer, short notes, coordinates checked against province boundaries).
+- **Discover Cambodia** (✨ button next to the filters, or ⋯ menu): 59 hand-picked famous and beautiful places — Angkor temples, Preah Vihear, Koh Ker, Phnom Penh landmarks, Kampot/Kep, Koh Kong (Tatai, Peam Krasaop mangroves, Koh Kong Island, Koh Sdach islands, Bak Khlong, Chi Phat, Areng, Mrech Kangkep), the islands, waterfalls in Mondulkiri and Ratanakiri. Save one with **+** or all at once to *Want to go* (with Undo).
+  - The list lives in `public/discover/cambodia.json` (names in English and Khmer, short notes, coordinates checked against province and commune boundaries). Pins that could only be placed roughly carry a `geo` hint: the phone asks OpenStreetMap (Photon) once and moves the pin to a nearby match.
   - On the phone, Wikipedia adds a photo, a short description and exact coordinates (only when they agree with ours within 8 km). Answers are cached for 30 days; photos are cached by the service worker for offline use.
 - **Photos on any place**: add from the camera/gallery (shrunk to 1600 px WebP and kept on the device in IndexedDB) or paste an image link. Tap to view full-screen, swipe, make cover, remove (with Undo). Backups include device photos.
 
