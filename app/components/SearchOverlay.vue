@@ -583,17 +583,22 @@ defineExpose({ openSearch: () => { openSearch(); input.value?.focus() }, close }
 @reference "../assets/css/main.css";
 .section { @apply mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-(--ui-text-dimmed); }
 .card {
-  @apply relative overflow-hidden rounded-[22px] bg-(--ui-bg-elevated)/55 p-1;
+  @apply relative overflow-hidden rounded-[24px] bg-(--ui-bg-elevated)/55 p-1.5;
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ui-border) 70%, transparent);
 }
-.row-wrap { @apply relative flex items-center; }
+.row-wrap { @apply relative flex items-center py-[3px]; }
+/* No divider touching a highlighted or pressed row: it floats with air around it */
+.row-wrap:has(.is-active)::before, .row-wrap:has(.is-active) + .row-wrap::before,
+.row-wrap:has(.row:active)::before, .row-wrap:has(.row:active) + .row-wrap::before,
+.row-wrap:has(.rippling)::before, .row-wrap:has(.rippling) + .row-wrap::before { opacity: 0; }
+.row-wrap::before { transition: opacity 0.15s ease; }
 /* Hairline between rows, starting after the icon like iOS lists */
 .row-wrap + .row-wrap::before {
   content: '';
-  @apply pointer-events-none absolute top-0 right-3 left-[64px] h-px bg-(--ui-border)/70;
+  @apply pointer-events-none absolute top-0 right-3 left-[66px] h-px bg-(--ui-border)/70;
 }
 .row {
-  @apply relative flex min-h-[60px] w-full min-w-0 flex-1 items-center gap-3 rounded-[18px] px-2.5 py-2 text-left outline-none;
+  @apply relative flex min-h-[58px] w-full min-w-0 flex-1 items-center gap-3 rounded-[18px] px-2.5 py-2 text-left outline-none;
   isolation: isolate;
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
@@ -602,8 +607,15 @@ defineExpose({ openSearch: () => { openSearch(); input.value?.focus() }, close }
 .row:active { transform: scale(0.985); background: color-mix(in oklab, var(--ui-primary) 7%, transparent); }
 .row:active .icon { transform: scale(0.92); }
 .row:focus-visible, .row.is-active {
-  background: color-mix(in oklab, var(--ui-primary) 9%, var(--ui-bg));
-  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--ui-primary) 45%, transparent);
+  background: var(--ui-bg);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--ui-primary) 28%, transparent),
+    0 4px 14px -6px color-mix(in oklab, var(--ui-primary) 35%, transparent);
+}
+/* Small accent bar, inset from the edges */
+.row.is-active::before, .row:focus-visible::before {
+  content: '';
+  @apply absolute top-4 bottom-4 left-[4px] w-[3px] rounded-full bg-(--ui-primary);
 }
 .row.is-active .chev { @apply translate-x-0.5 text-(--ui-primary); }
 /* Ripple from the touch point */
