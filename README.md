@@ -85,6 +85,14 @@ Logic lives in `app/composables/useHidden.ts`.
 - Routes come from the free community [Valhalla](https://valhalla1.openstreetmap.de) server, falling back to [OSRM](https://routing.openstreetmap.de). Both allow about one request per second and need a connection. Routes never pass through the hidden country (`public/geo/route-avoid-th.json`).
 - **Measure** (ruler button or ⋯ menu): tap points to measure a path, drag points to adjust, tap the first point to close the shape and get its area and perimeter. Back closes it.
 
+## Google Maps–style controls
+
+- **Rotate & tilt** with two fingers (right-drag on desktop). A **compass** appears as soon as the map is turned or tilted; tap it to point north again.
+- **My location** works like Google's: first tap shows the blue dot (with an accuracy circle and a beam showing which way you face) and follows you; second tap turns the map with your phone (compass mode); moving the map stops following. GPS pauses while the app is in the background.
+- **Scale bar** appears while zooming.
+- **Category chips** under the search bar: Food, Cafés, Gas, ATMs, Hotels, Markets, Temples, Pharmacies, Hospitals… search around the map centre in one tap.
+- **Satellite** map style (hybrid: imagery + roads + labels) from EOX Sentinel-2 cloudless 2024. Free for non-commercial use; its licence requires the small imagery credit shown in that style. 10 m pixels: great for landscapes, coast and towns, blurry at street level.
+
 ## Bottom sheet
 
 - Drag the sheet by its content, not only the handle: swipe up to expand, and at full height pull down from the top of the list to shrink it. Flings are velocity-aware and a drag never "taps" the row under your finger.

@@ -36,6 +36,8 @@ export interface MapStyleDef {
   url: string
   palette?: Palette
   extrude?: boolean
+  /** Satellite imagery tile URL: the style becomes imagery + roads + labels (hybrid) */
+  satellite?: string
   swatch: Swatch
   credit: string
 }
@@ -84,6 +86,15 @@ export const MAP_STYLES: MapStyleDef[] = [
   { id: 'vt-natural', label: 'Natural', tag: 'VersaTiles', dark: false, url: '/styles/versatiles-natural.json', credit: VT_CREDIT,
     swatch: { land: '#f2edde', water: '#a6cbed', park: '#cfe0b0', road: WHITE, roadMajor: '#e8c48a', building: '#e6dccb' } },
 ]
+
+// Sentinel-2 cloudless by EOX: free for non-commercial use with attribution (10 m pixels,
+// so sharp for towns, fields, rivers and coast; blurry at street level)
+const EOX_2024 = 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2024_3857/default/g/{z}/{y}/{x}.jpg'
+MAP_STYLES.splice(4, 0, {
+  id: 'satellite', label: 'Satellite', tag: 'Hybrid', dark: true, url: `${OFM}/liberty`, satellite: EOX_2024,
+  credit: 'Imagery: Sentinel-2 cloudless – s2maps.eu by EOX IT Services GmbH (Copernicus Sentinel data 2024)',
+  swatch: { land: '#4d5a3a', water: '#1d3b52', park: '#3f5a33', road: '#e9e4d8', roadMajor: '#f4c26b', building: '#6b6656' },
+})
 
 export const AUTO_STYLE = 'auto'
 export const styleById = (id: string) => MAP_STYLES.find(s => s.id === id) ?? MAP_STYLES[0]!
@@ -162,4 +173,33 @@ export function fontsOf(style: StyleSpecification) {
     bold: [find(/bold/i) ?? regular],
     italic: [find(/italic/i) ?? regular],
   }
+}
+
+/** Satellite imagery under the basemap's roads and labels (Google's "Satellite" with labels) */
+export function hybrid(style: StyleSpecification, tiles: string): StyleSpecification {
+  const s = structuredClone(style)
+  const keep: LayerSpecification[] = []
+  for (const layer of s.layers as (LayerSpecification & { 'source-layer'?: string; paint?: Record<string, unknown>; layout?: Record<string, unknown> })[]) {
+    const sl = layer['source-layer']
+    if (layer.type === 'symbol') {
+      layer.paint ??= {}
+      if (layer.layout?.['text-field']) {
+        layer.paint['text-color'] = WHITE
+        layer.paint['text-halo-color'] = 'rgba(0,0,0,0.75)'
+        layer.paint['text-halo-width'] = 1.4
+      }
+      keep.push(layer)
+    } else if (layer.type === 'line' && (sl === 'transportation' || sl === 'boundary')) {
+      layer.paint ??= {}
+      layer.paint['line-opacity'] = sl === 'boundary' ? 0.6 : 0.55
+      keep.push(layer)
+    }
+  }
+  s.sources = { ...s.sources, satellite: { type: 'raster', tiles: [tiles], tileSize: 256, maxzoom: 14 } }
+  s.layers = [
+    { id: 'background', type: 'background', paint: { 'background-color': '#10304a' } },
+    { id: 'satellite', type: 'raster', source: 'satellite', paint: { 'raster-fade-duration': 150 } },
+    ...keep,
+  ]
+  return s
 }

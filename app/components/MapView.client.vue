@@ -14,12 +14,19 @@
         </div>
       </div>
     </Transition>
+    <p
+      v-if="styleDef.satellite"
+      class="pointer-events-none absolute left-2 z-[1] max-w-[70%] text-[9px] leading-tight text-white/75 [text-shadow:0_1px_2px_rgb(0_0_0/0.8)]"
+      :style="{ bottom: `${(snap === 'peek' ? 156 : 0) + 6}px` }"
+    >
+      {{ styleDef.credit }}
+    </p>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { Map as MLMap, GeoJSONSource, MapMouseEvent, MapTouchEvent, ExpressionSpecification, StyleSpecification } from 'maplibre-gl'
-import { AUTO_STYLE, styleById, recolor, fontsOf, type MapStyleDef } from '~/utils/mapStyles'
+import { AUTO_STYLE, styleById, recolor, hybrid, fontsOf, type MapStyleDef } from '~/utils/mapStyles'
 import { STATUS_COLORS } from '~/utils/db'
 import { WHITE, whiteA } from '~/utils/colors'
 import { haversineKm, formatKm, type LngLat } from '~/utils/geo'
@@ -41,7 +48,7 @@ const { t } = useLang()
 
 let map: MLMap | null = null
 let ml: typeof import('maplibre-gl') | null = null
-const { styleChoice, snap } = useAppState()
+const { styleChoice, snap, camera, zooming, locateMode } = useAppState()
 const styleDef = computed(() => styleById(styleChoice.value === AUTO_STYLE ? (colorMode.value === 'dark' ? 'dark' : 'liberty') : styleChoice.value))
 const isDark = computed(() => styleDef.value.dark)
 let fonts = { regular: ['Noto Sans Regular'], bold: ['Noto Sans Bold'], italic: ['Noto Sans Italic'] }
@@ -62,6 +69,7 @@ async function resolveStyle(def: MapStyleDef): Promise<string | StyleSpecificati
   try {
     // Fetch the style ourselves so it downloads in parallel with the map library
     const base = await (await fetch(url)).json() as StyleSpecification
+    if (def.satellite) return hybrid(base, def.satellite)
     if (def.palette) return recolor(base, def.palette)
     // Only hand over the object when every link in it is absolute (relative ones need the style URL)
     return allAbsolute(base) ? base : url
@@ -118,7 +126,7 @@ async function addLayers() {
   syncExplored(true)
   syncArea()
   syncVisibility()
-  if (lastMe) setData('me', pointFC(lastMe.lng, lastMe.lat))
+  if (lastMe) syncMe()
   syncRoute(false)
   syncMeasure()
 }
@@ -187,6 +195,7 @@ function hideCountries() {
 
 /** The style's sea colour: a plain colour, or a zoom-only expression we can reuse as-is. */
 function waterColor(style: StyleSpecification): unknown {
+  if (styleDef.value.satellite) return '#10304a'
   const fills = style.layers.filter(l => l.type === 'fill') as { id: string; 'source-layer'?: string; paint?: Record<string, unknown> }[]
   const water = fills.find(l => /ocean|sea/.test(l.id))
     ?? fills.find(l => l['source-layer'] === 'water' || l['source-layer'] === 'ocean')
@@ -451,7 +460,13 @@ function addPlaceLayers() {
     paint: { 'text-color': isDark.value ? '#fde68a' : '#92400e', 'text-halo-color': isDark.value ? '#0b1020' : WHITE, 'text-halo-width': 2 },
   })
 
-  // My location
+  // My location: accuracy circle, direction beam, blue dot
+  map.addLayer({ id: 'me-acc', type: 'circle', source: 'me', paint: { 'circle-radius': accuracyRadius(), 'circle-color': '#3b82f6', 'circle-opacity': 0.12, 'circle-stroke-width': 1, 'circle-stroke-color': '#3b82f6', 'circle-stroke-opacity': 0.35, 'circle-pitch-alignment': 'map' } })
+  if (!map.hasImage('me-beam')) map.addImage('me-beam', beamImage(), { pixelRatio: 2 })
+  map.addLayer({
+    id: 'me-beam', type: 'symbol', source: 'me', filter: ['has', 'heading'],
+    layout: { 'icon-image': 'me-beam', 'icon-rotate': ['get', 'heading'], 'icon-rotation-alignment': 'map', 'icon-pitch-alignment': 'map', 'icon-allow-overlap': true, 'icon-ignore-placement': true },
+  })
   map.addLayer({ id: 'me-halo', type: 'circle', source: 'me', paint: { 'circle-radius': 22, 'circle-color': '#3b82f6', 'circle-opacity': 0.16 } })
   map.addLayer({ id: 'me-dot', type: 'circle', source: 'me', paint: { 'circle-radius': 7, 'circle-color': '#3b82f6', 'circle-stroke-width': 3, 'circle-stroke-color': WHITE } })
 }
@@ -663,15 +678,9 @@ function apply3D() {
     map.touchPitch.enable()
     map.touchZoomRotate.enableRotation()
     map.easeTo({ pitch: 58, bearing: map.getBearing() || -18, zoom: Math.max(map.getZoom(), 15.4), duration: 1400 })
-  } else if (map.getPitch() || map.getBearing()) {
-    map.easeTo({ pitch: 0, bearing: 0, duration: 800 })
-    map.once('moveend', () => {
-      if (styleDef.value.extrude || !map) return
-      map.setMaxPitch(0)
-      map.dragRotate.disable()
-      map.touchPitch.disable()
-      map.touchZoomRotate.disableRotation()
-    })
+  } else {
+    map.setMaxPitch(60)
+    if (map.getPitch() > 1) map.easeTo({ pitch: 0, duration: 800 })
   }
 }
 
@@ -703,20 +712,148 @@ function fitAll() {
   map.fitBounds(b, { padding: { top: 110, bottom: Math.round(window.innerHeight * 0.3), left: 48, right: 48 }, maxZoom: 13, duration: 1200 })
 }
 
-let lastMe: { lng: number; lat: number } | null = null
+// ---------- My location (Google-style: dot, accuracy, direction, follow, compass) ----------
+let lastMe: { lng: number; lat: number; acc: number } | null = null
+let heading: number | null = null
+let watchId: number | null = null
+
+function syncMe() {
+  if (!lastMe || !map || !layersReady) return
+  setData('me', pointFC(lastMe.lng, lastMe.lat, heading == null ? {} : { heading }))
+  if (map.getLayer('me-acc')) map.setPaintProperty('me-acc', 'circle-radius', accuracyRadius())
+}
+/** Accuracy in metres → circle radius in pixels at every zoom */
+function accuracyRadius(): ExpressionSpecification | number {
+  if (!lastMe) return 0
+  const r0 = (Math.min(lastMe.acc, 3000) * 512) / (40075016.686 * Math.cos((lastMe.lat * Math.PI) / 180))
+  return ['interpolate', ['exponential', 2], ['zoom'], 0, r0, 22, r0 * 4194304]
+}
+/** A soft blue wedge pointing up, rotated to where the phone faces */
+function beamImage() {
+  const size = 200
+  const c = document.createElement('canvas')
+  c.width = c.height = size
+  const g = c.getContext('2d')!
+  const cx = size / 2
+  const grad = g.createRadialGradient(cx, cx, 6, cx, cx, cx)
+  grad.addColorStop(0, 'rgba(59,130,246,0.55)')
+  grad.addColorStop(1, 'rgba(59,130,246,0)')
+  g.fillStyle = grad
+  g.beginPath()
+  g.moveTo(cx, cx)
+  g.arc(cx, cx, cx, -Math.PI / 2 - 0.42, -Math.PI / 2 + 0.42)
+  g.closePath()
+  g.fill()
+  return g.getImageData(0, 0, size, size)
+}
+
+function onPosition(pos: GeolocationPosition, recenter: boolean) {
+  const first = !lastMe
+  lastMe = { lng: pos.coords.longitude, lat: pos.coords.latitude, acc: pos.coords.accuracy || 30 }
+  // Moving fast: the GPS course is a better arrow than the compass
+  if (pos.coords.heading != null && !Number.isNaN(pos.coords.heading) && (pos.coords.speed ?? 0) > 1.5) heading = pos.coords.heading
+  syncMe()
+  if (!map) return
+  if (first || recenter) flyTo(lastMe.lng, lastMe.lat, Math.max(map.getZoom(), 15.5))
+  else if (locateMode.value === 'follow' || locateMode.value === 'compass') {
+    map.easeTo({ center: [lastMe.lng, lastMe.lat], duration: 700, padding: sheetPadding() })
+  }
+}
+
+function startWatch() {
+  if (watchId != null || !navigator.geolocation) return
+  watchId = navigator.geolocation.watchPosition(p => onPosition(p, false), () => {}, { enableHighAccuracy: true, maximumAge: 5000 })
+  startCompass()
+}
+function stopWatch() {
+  if (watchId != null) navigator.geolocation.clearWatch(watchId)
+  watchId = null
+  stopCompass()
+}
+
+// Compass (device orientation). iOS asks for permission on a tap.
+let lastHeadingAt = 0
+function onOrientation(e: DeviceOrientationEvent & { webkitCompassHeading?: number }) {
+  let h: number | null = null
+  if (typeof e.webkitCompassHeading === 'number') h = e.webkitCompassHeading
+  else if (e.absolute && e.alpha != null) h = (360 - e.alpha) % 360
+  if (h == null) return
+  const now = performance.now()
+  if (now - lastHeadingAt < 120) return
+  lastHeadingAt = now
+  heading = Math.round(h)
+  syncMe()
+  if (locateMode.value === 'compass' && map) map.easeTo({ bearing: heading, duration: 200, easing: t => t })
+}
+let compassOn = false
+function startCompass() {
+  if (compassOn) return
+  compassOn = true
+  window.addEventListener('deviceorientationabsolute' as 'deviceorientation', onOrientation as EventListener)
+  window.addEventListener('deviceorientation', onOrientation as EventListener)
+}
+function stopCompass() {
+  compassOn = false
+  window.removeEventListener('deviceorientationabsolute' as 'deviceorientation', onOrientation as EventListener)
+  window.removeEventListener('deviceorientation', onOrientation as EventListener)
+}
+async function askCompassPermission() {
+  const DOE = window.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> }
+  if (typeof DOE?.requestPermission === 'function') {
+    try { return (await DOE.requestPermission()) === 'granted' } catch { return false }
+  }
+  return true
+}
+
+/** One-shot fix (used by "Add here" and routing); also starts showing the dot */
 function locate() {
   return new Promise<{ lng: number; lat: number } | null>((resolve) => {
     if (!navigator.geolocation) return resolve(null)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        lastMe = { lng: pos.coords.longitude, lat: pos.coords.latitude }
-        setData('me', pointFC(lastMe.lng, lastMe.lat))
-        flyTo(lastMe.lng, lastMe.lat, 15)
-        resolve(lastMe)
+        onPosition(pos, true)
+        if (locateMode.value === 'off') locateMode.value = 'shown'
+        startWatch()
+        resolve({ lng: lastMe!.lng, lat: lastMe!.lat })
       },
       () => resolve(null),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
     )
+  })
+}
+
+/** My-location button: show + follow → compass (map turns with the phone) → follow */
+async function cycleLocate(): Promise<boolean> {
+  const m = locateMode.value
+  if (m === 'follow') {
+    await askCompassPermission()
+    startCompass()
+    locateMode.value = 'compass'
+    if (heading != null) map?.easeTo({ bearing: heading, duration: 500 })
+    return true
+  }
+  if (m === 'compass') {
+    locateMode.value = 'follow'
+    map?.easeTo({ bearing: 0, duration: 500 })
+    return true
+  }
+  const pos = await locate()
+  if (!pos) return false
+  locateMode.value = 'follow'
+  return true
+}
+
+function resetNorth() {
+  if (!map) return
+  if (locateMode.value === 'compass') locateMode.value = 'follow'
+  map.easeTo({ bearing: 0, pitch: styleDef.value.extrude ? map.getPitch() : 0, duration: 600 })
+}
+
+if (import.meta.client) {
+  document.addEventListener('visibilitychange', () => {
+    // Save battery: no GPS while the app is in the background
+    if (document.hidden) stopWatch()
+    else if (locateMode.value !== 'off') startWatch()
   })
 }
 
@@ -768,13 +905,10 @@ onMounted(async () => {
     pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
     // Keep more recently seen tiles in memory so panning back is instant
     maxTileCacheZoomLevels: 6,
-    maxPitch: 0,
-    pitchWithRotate: false,
-    dragRotate: false,
-    touchPitch: false,
+    // Two-finger rotate and tilt, like Google Maps; the compass button puts north back up
+    maxPitch: 60,
     cancelPendingTileRequestsWhileZooming: true,
   })
-  map.touchZoomRotate.disableRotation()
 
   map.on('style.load', () => void addLayers())
   map.once('idle', () => {
@@ -784,6 +918,28 @@ onMounted(async () => {
   setTimeout(() => (loaded.value = true), 6000)
 
   map.on('movestart', () => emit('moving', true))
+  // Live camera for the compass and scale bar (once per frame at most)
+  let camQueued = false
+  const pushCamera = () => {
+    if (camQueued) return
+    camQueued = true
+    requestAnimationFrame(() => {
+      camQueued = false
+      if (!map) return
+      camera.value = { bearing: map.getBearing(), pitch: map.getPitch(), zoom: map.getZoom(), lat: map.getCenter().lat }
+    })
+  }
+  map.on('move', pushCamera)
+  pushCamera()
+  map.on('zoomstart', () => (zooming.value = true))
+  map.on('zoomend', () => (zooming.value = false))
+  // Touching the map stops following you (the dot stays)
+  const userMove = (e: { originalEvent?: Event }) => {
+    if (e.originalEvent && (locateMode.value === 'follow' || locateMode.value === 'compass')) locateMode.value = 'shown'
+  }
+  map.on('dragstart', userMove)
+  map.on('rotatestart', userMove)
+
   // Panning the map by hand lowers an expanded list, like native maps apps
   map.on('dragstart', () => {
     if (snap.value !== 'peek' && !draft.value) snap.value = 'peek'
@@ -874,9 +1030,22 @@ onMounted(async () => {
   map.on('touchend', () => clearTimeout(pressTimer))
   map.on('touchcancel', () => clearTimeout(pressTimer))
   map.on('movestart', () => clearTimeout(pressTimer))
-  map.on('contextmenu', (e: MapMouseEvent) => {
-    if (!('ontouchstart' in window) && !measuring.value) dropAt(e.lngLat.lng, e.lngLat.lat)
-  })
+  // Desktop: right-click drops a pin, right-drag rotates/tilts (so wait for the button to come up)
+  let rightDown: { x: number; y: number } | null = null
+  const box = map.getCanvasContainer()
+  // Capture phase: the map's own gesture handlers may stop these events
+  window.addEventListener('mousedown', (e) => {
+    rightDown = e.button === 2 && box.contains(e.target as Node) ? { x: e.clientX, y: e.clientY } : null
+  }, true)
+  window.addEventListener('mouseup', (e) => {
+    if (e.button !== 2 || !rightDown || !map || measuring.value) return
+    const moved = Math.hypot(e.clientX - rightDown.x, e.clientY - rightDown.y)
+    rightDown = null
+    if (moved >= 5) return
+    const r = box.getBoundingClientRect()
+    const ll = map.unproject([e.clientX - r.left, e.clientY - r.top])
+    dropAt(ll.lng, ll.lat)
+  }, true)
 
   mapApi.value = {
     showRoute,
@@ -886,6 +1055,8 @@ onMounted(async () => {
     fitBounds,
     fitAll,
     locate,
+    cycleLocate,
+    resetNorth,
     pulse,
     zoom: () => map!.getZoom(),
     center: () => {

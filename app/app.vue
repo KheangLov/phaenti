@@ -4,7 +4,12 @@
       <MapView ref="mapView" @moving="moving = $event" />
 
       <!-- Top: search -->
-      <SearchOverlay ref="search" :hidden="picking || measuring" />
+      <SearchOverlay ref="search" :hidden="picking || measuring" :chips="snap !== 'full'" />
+
+      <!-- Scale bar while zooming -->
+      <div class="absolute left-3 z-10" :style="{ top: 'calc(max(env(safe-area-inset-top), 12px) + 112px)' }">
+        <ScaleBar />
+      </div>
 
       <!-- Offline indicator -->
       <AnimatePresence>
@@ -12,7 +17,7 @@
           v-if="!online && !picking"
           key="offline"
           class="absolute left-1/2 z-30 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white shadow-lg"
-          :style="{ top: 'calc(max(env(safe-area-inset-top), 12px) + 58px)' }"
+          :style="{ top: 'calc(max(env(safe-area-inset-top), 12px) + 106px)' }"
           :initial="{ y: -12, opacity: 0, scale: 0.9 }"
           :animate="{ y: 0, opacity: 1, scale: 1 }"
           :exit="{ y: -12, opacity: 0, scale: 0.9 }"
@@ -25,10 +30,30 @@
       <!-- Right: map controls -->
       <motion.div
         class="absolute right-3 z-10 flex flex-col gap-2"
-        :style="{ top: 'calc(max(env(safe-area-inset-top), 12px) + 64px)' }"
+        :style="{ top: 'calc(max(env(safe-area-inset-top), 12px) + 112px)' }"
         :animate="{ x: picking ? 80 : 0 }"
         :transition="spring"
       >
+        <!-- Compass: appears once the map is turned or tilted; tap for north-up -->
+        <AnimatePresence>
+          <motion.button
+            v-if="rotated"
+            key="compass"
+            class="glass shadow-float grid size-11 place-items-center rounded-2xl"
+            :aria-label="t('app.north')"
+            :initial="{ scale: 0, opacity: 0 }"
+            :animate="{ scale: 1, opacity: 1 }"
+            :exit="{ scale: 0, opacity: 0 }"
+            :while-press="{ scale: 0.88 }"
+            @click="haptic('tap'); mapApi?.resetNorth()"
+          >
+            <svg viewBox="0 0 24 24" class="size-7" :style="{ transform: `rotate(${-camera.bearing}deg) rotateX(${camera.pitch * 0.6}deg)` }">
+              <path d="M12 2.5 15.2 12H8.8Z" fill="#ef4444" />
+              <path d="M12 21.5 8.8 12h6.4Z" class="fill-(--ui-text-dimmed)" />
+              <circle cx="12" cy="12" r="1.6" class="fill-(--ui-bg)" />
+            </svg>
+          </motion.button>
+        </AnimatePresence>
         <button class="glass shadow-float grid size-11 place-items-center rounded-2xl active:scale-90 transition" :aria-label="t('app.mapStyle')" @click="styleOpen = true">
           <UIcon name="i-lucide-layers" class="size-5" />
         </button>
@@ -48,8 +73,18 @@
         <button class="glass shadow-float grid size-11 place-items-center rounded-2xl active:scale-90 transition" :aria-label="t('app.showAll')" @click="mapApi?.fitAll()">
           <UIcon name="i-lucide-scan" class="size-5" />
         </button>
-        <button class="glass shadow-float grid size-11 place-items-center rounded-2xl active:scale-90 transition" :aria-label="t('app.myLocation')" @click="locate">
-          <UIcon :name="locating ? 'i-lucide-loader-circle' : 'i-lucide-locate-fixed'" class="size-5 text-sky-500" :class="locating ? 'animate-spin' : ''" />
+        <button
+          class="shadow-float grid size-11 place-items-center rounded-2xl active:scale-90 transition"
+          :class="locateMode === 'follow' || locateMode === 'compass' ? 'bg-sky-500 text-white' : 'glass text-sky-500'"
+          :aria-label="t('app.myLocation')"
+          :aria-pressed="locateMode === 'follow' || locateMode === 'compass'"
+          @click="locate"
+        >
+          <UIcon
+            :name="locating ? 'i-lucide-loader-circle' : locateMode === 'compass' ? 'i-lucide-compass' : locateMode === 'follow' ? 'i-lucide-locate-fixed' : 'i-lucide-locate'"
+            class="size-5"
+            :class="locating ? 'animate-spin' : ''"
+          />
         </button>
       </motion.div>
 
@@ -209,7 +244,7 @@ const PEEK = 156
 const spring = { type: 'spring', stiffness: 420, damping: 38 } as const
 
 const { places, toExport, importFile } = usePlaces()
-const { photoViewer, discoverOpen, route, measuring, measurePts, measureClosed, selectedId, draft, area, picking, pendingCategory, searching, filter, snap, mapApi, closeAll, showBoundaries, showExplored } = useAppState()
+const { camera, locateMode, photoViewer, discoverOpen, route, measuring, measurePts, measureClosed, selectedId, draft, area, picking, pendingCategory, searching, filter, snap, mapApi, closeAll, showBoundaries, showExplored } = useAppState()
 const colorMode = useColorMode()
 const toast = useToast()
 const { $pwa } = useNuxtApp()
@@ -273,11 +308,16 @@ function confirmPick() {
   pendingCategory.value = null
 }
 
+const rotated = computed(() => Math.abs(camera.value.bearing) > 0.5 || camera.value.pitch > 1)
+
+// Google-style: tap = show & follow me, tap again = compass mode (map turns with you)
 async function locate() {
-  locating.value = true
-  const pos = await mapApi.value?.locate()
+  haptic('tap')
+  const slow = locateMode.value === 'off' || locateMode.value === 'shown'
+  if (slow) locating.value = true
+  const ok = await mapApi.value?.cycleLocate()
   locating.value = false
-  if (!pos) toast.add({ title: t('toast.locationOff'), description: t('toast.locationHint'), icon: 'i-lucide-locate-off', color: 'warning' })
+  if (!ok) toast.add({ title: t('toast.locationOff'), description: t('toast.locationHint'), icon: 'i-lucide-locate-off', color: 'warning' })
 }
 
 // ---- Install ----

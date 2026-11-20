@@ -37,7 +37,15 @@ export interface MapApi {
   offlineInfo: () => OfflineInfo | null
   showRoute: (coords: LngLat[], color: string) => void
   clearRoute: () => void
+  /** North up and flat again */
+  resetNorth: () => void
+  /** My-location button: off → follow → compass → follow … */
+  cycleLocate: () => Promise<boolean>
 }
+
+/** Live camera, for the compass and scale bar */
+export interface Camera { bearing: number; pitch: number; zoom: number; lat: number }
+export type LocateMode = 'off' | 'shown' | 'follow' | 'compass'
 
 export interface OfflineInfo {
   sources: { tiles: string[]; minzoom: number; maxzoom: number }[]
@@ -61,6 +69,9 @@ const route = ref<RouteRequest | null>(null)
 const measuring = ref(false)
 const measurePts = shallowRef<LngLat[]>([])
 const measureClosed = ref(false)
+const camera = shallowRef<Camera>({ bearing: 0, pitch: 0, zoom: 6, lat: 12.5 })
+const zooming = ref(false)
+const locateMode = ref<LocateMode>('off')
 /** Full-screen photo viewer */
 const photoViewer = ref<{ placeId: string; index: number } | null>(null)
 /** Discover famous places sheet */
@@ -140,6 +151,7 @@ export function useAppState() {
   return {
     selectedId, draft, area, picking, pendingCategory, searching, filter, snap, mapApi,
     route, measuring, measurePts, measureClosed, openRoute, photoViewer, discoverOpen,
+    camera, zooming, locateMode,
     showBoundaries, showExplored, styleChoice,
     select, openDraft, openArea, closeAll,
   }

@@ -65,9 +65,23 @@ export function categoryFromOsm(key = '', value = ''): CategoryId {
 }
 
 /** Nearby-search shortcuts (Photon q + osm_tag filters) */
-export const QUICK_SEARCHES: { id: CategoryId; label: string; q: string; tags: string[] }[] = [
-  { id: 'cafe', label: 'Cafés', q: 'cafe', tags: ['amenity:cafe'] },
+export interface QuickSearch {
+  /** Category given to a place saved from these results */
+  id: CategoryId
+  /** Unique key when several chips share a category (ATM, fuel…) */
+  key?: string
+  label: string
+  q: string
+  tags: string[]
+  icon?: string
+  color?: string
+  color2?: string
+}
+export const QUICK_SEARCHES: QuickSearch[] = [
   { id: 'food', label: 'Food', q: 'restaurant', tags: ['amenity:restaurant', 'amenity:fast_food'] },
+  { id: 'cafe', label: 'Cafés', q: 'cafe', tags: ['amenity:cafe'] },
+  { id: 'transport', key: 'fuel', label: 'Gas', q: 'fuel', tags: ['amenity:fuel'], icon: 'fuel', color: '#0ea5e9', color2: '#0369a1' },
+  { id: 'other', key: 'atm', label: 'ATMs', q: 'atm', tags: ['amenity:atm', 'amenity:bank'], icon: 'banknote', color: '#16a34a', color2: '#15803d' },
   { id: 'temple', label: 'Temples', q: 'wat', tags: ['amenity:place_of_worship', 'historic'] },
   { id: 'nature', label: 'Nature', q: 'park', tags: ['leisure:park', 'natural', 'waterway:waterfall', 'boundary:national_park'] },
   { id: 'beach', label: 'Beaches', q: 'beach', tags: ['natural:beach'] },
@@ -76,7 +90,10 @@ export const QUICK_SEARCHES: { id: CategoryId; label: string; q: string; tags: s
   { id: 'shopping', label: 'Markets', q: 'market', tags: ['amenity:marketplace', 'shop:mall', 'shop:supermarket'] },
   { id: 'viewpoint', label: 'Viewpoints', q: 'viewpoint', tags: ['tourism:viewpoint', 'natural:peak'] },
   { id: 'culture', label: 'Museums', q: 'museum', tags: ['tourism:museum', 'tourism:attraction', 'historic'] },
+  { id: 'other', key: 'pharmacy', label: 'Pharmacies', q: 'pharmacy', tags: ['amenity:pharmacy'], icon: 'pill', color: '#ec4899', color2: '#be185d' },
+  { id: 'other', key: 'hospital', label: 'Hospitals', q: 'hospital', tags: ['amenity:hospital', 'amenity:clinic'], icon: 'hospital', color: '#ef4444', color2: '#b91c1c' },
 ]
+export const quickKey = (c: QuickSearch) => c.key ?? c.id
 
 /** List / map filter: all, been, want to go (travel spots only), or one personal type. */
 export function matchesFilter(p: { status: string; category: string }, f: string) {

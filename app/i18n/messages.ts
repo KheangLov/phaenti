@@ -21,6 +21,7 @@ export const en = {
     menu: 'Menu',
     showAll: 'Show all places',
     myLocation: 'My location',
+    north: 'Point north',
     resize: 'Resize panel',
   },
   menu: {
@@ -344,6 +345,7 @@ export const km: Shape<typeof en> = {
     menu: 'ម៉ឺនុយ',
     showAll: 'បង្ហាញទីកន្លែងទាំងអស់',
     myLocation: 'ទីតាំងរបស់ខ្ញុំ',
+    north: 'បង្វិលទៅទិសខាងជើង',
     resize: 'ប្ដូរទំហំផ្ទាំង',
   },
   menu: {
@@ -654,12 +656,14 @@ export const CATEGORY_KM: Record<string, string> = {
 export const QUICK_KM: Record<string, string> = {
   cafe: 'ហាងកាហ្វេ', food: 'អាហារ', temple: 'វត្តអារាម', nature: 'ធម្មជាតិ', beach: 'ឆ្នេរ', stay: 'សណ្ឋាគារ',
   nightlife: 'កម្សាន្តពេលយប់', shopping: 'ផ្សារ', viewpoint: 'ទេសភាព', culture: 'សារមន្ទីរ',
+  fuel: 'ស្ថានីយប្រេង', atm: 'ATM', pharmacy: 'ឱសថស្ថាន', hospital: 'មន្ទីរពេទ្យ',
 }
 export const STYLE_KM: Record<string, { label: string; tag: string }> = {
   liberty: { label: 'លីប៊ើធី', tag: 'បុរាណ' },
   positron: { label: 'ផូស៊ីត្រុង', tag: 'សាមញ្ញ' },
   bright: { label: 'ភ្លឺ', tag: 'លម្អិត' },
   '3d': { label: 'ទីក្រុង 3D', tag: '3D' },
+  satellite: { label: 'ផ្កាយរណប', tag: 'ចម្រុះ' },
   angkor: { label: 'អង្គរ', tag: 'Phaenti' },
   'mekong-night': { label: 'រាត្រីមេគង្គ', tag: 'Phaenti' },
   'rice-paddy': { label: 'វាលស្រែ', tag: 'Phaenti' },

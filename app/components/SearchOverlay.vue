@@ -81,6 +81,32 @@
         </motion.div>
       </div>
 
+      <!-- Category chips under the search bar, like Google Maps -->
+      <AnimatePresence>
+        <motion.div
+          v-if="!open && chips"
+          key="chips"
+          class="-mx-3 mt-2 overflow-x-auto overscroll-x-contain px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          :initial="{ opacity: 0, y: -6 }"
+          :animate="{ opacity: 1, y: 0 }"
+          :exit="{ opacity: 0, y: -6 }"
+        >
+          <div class="mx-auto flex w-max gap-1.5 pb-1">
+            <button
+              v-for="c in QUICK_SEARCHES"
+              :key="quickKey(c)"
+              class="glass shadow-float flex h-9 shrink-0 items-center gap-1.5 rounded-full pl-1.5 pr-3 text-[13px] font-medium active:scale-95 transition-transform"
+              @click="startQuick(c)"
+            >
+              <span class="grid size-6 place-items-center rounded-full text-white" :style="{ background: chipBg(c) }">
+                <UIcon :name="`i-lucide-${chipIcon(c)}`" class="size-3.5" />
+              </span>
+              {{ quickLabel(quickKey(c), c.label) }}
+            </button>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+
       <!-- Panel -->
       <AnimatePresence>
         <motion.div
@@ -104,17 +130,17 @@
                 <div class="grid w-max grid-flow-col grid-rows-2 gap-2">
                   <motion.button
                     v-for="(c, i) in QUICK_SEARCHES"
-                    :key="c.id"
+                    :key="quickKey(c)"
                     class="flex h-11 items-center gap-2 rounded-2xl bg-(--ui-bg-elevated) pl-1.5 pr-3.5 text-sm font-medium active:scale-95 transition-transform"
                     :initial="{ opacity: 0, y: 8 }"
                     :animate="{ opacity: 1, y: 0 }"
                     :transition="{ delay: i * 0.02 }"
                     @click="runQuick(c)"
                   >
-                    <span class="grid size-8 place-items-center rounded-xl text-white" :style="{ background: `linear-gradient(135deg, ${cat(c.id).color}, ${cat(c.id).color2})` }">
-                      <UIcon :name="`i-lucide-${cat(c.id).icon}`" class="size-4.5" />
+                    <span class="grid size-8 place-items-center rounded-xl text-white" :style="{ background: chipBg(c) }">
+                      <UIcon :name="`i-lucide-${chipIcon(c)}`" class="size-4.5" />
                     </span>
-                    {{ quickLabel(c.id, c.label) }}
+                    {{ quickLabel(quickKey(c), c.label) }}
                   </motion.button>
                 </div>
               </div>
@@ -161,10 +187,10 @@
           <!-- Results -->
           <template v-else>
             <div v-if="quick" class="mb-2 flex items-center gap-2 px-1">
-              <span class="grid size-7 place-items-center rounded-lg text-white" :style="{ background: cat(quick.id).color }">
-                <UIcon :name="`i-lucide-${cat(quick.id).icon}`" class="size-4" />
+              <span class="grid size-7 place-items-center rounded-lg text-white" :style="{ background: chipBg(quick) }">
+                <UIcon :name="`i-lucide-${chipIcon(quick)}`" class="size-4" />
               </span>
-              <p class="text-sm font-semibold">{{ t('search.nearCentre', { what: quickLabel(quick.id, quick.label) }) }}</p>
+              <p class="text-sm font-semibold">{{ t('search.nearCentre', { what: quickLabel(quickKey(quick), quick.label) }) }}</p>
             </div>
 
             <section v-for="sec in sections" :key="sec.title" class="mb-4">
@@ -216,12 +242,12 @@
 import { motion, AnimatePresence } from 'motion-v'
 import { refDebounced } from '@vueuse/core'
 import type { GeoResult } from '~/composables/useGeocode'
-import { QUICK_SEARCHES, categoryOf, isPersonal, type CategoryId } from '~/utils/categories'
+import { QUICK_SEARCHES, quickKey, type QuickSearch, categoryOf, isPersonal, type CategoryId } from '~/utils/categories'
 import { pinDataUrl } from '~/utils/pins'
 import { adminCounts } from '~/composables/useAdmin'
 import { isBlockedText, isHiddenPoint } from '~/composables/useHidden'
 
-defineProps<{ hidden?: boolean }>()
+defineProps<{ hidden?: boolean; chips?: boolean }>()
 const { places } = usePlaces()
 const { mapApi, select, openDraft, openArea, searching } = useAppState()
 const admin = useAdmin()
@@ -233,7 +259,9 @@ const open = ref(false)
 const loading = ref(false)
 const error = ref('')
 const remote = shallowRef<GeoResult[]>([])
-const quick = ref<(typeof QUICK_SEARCHES)[number] | null>(null)
+const quick = ref<QuickSearch | null>(null)
+const chipIcon = (c: QuickSearch) => c.icon ?? cat(c.id).icon
+const chipBg = (c: QuickSearch) => `linear-gradient(135deg, ${c.color ?? cat(c.id).color}, ${c.color2 ?? c.color ?? cat(c.id).color2})`
 const active = ref(0)
 const origin = ref<{ lat: number; lng: number } | null>(null)
 
@@ -397,7 +425,13 @@ watch(q, (v) => {
   origin.value = mapApi.value?.center() ?? null
 })
 
-function runQuick(c: (typeof QUICK_SEARCHES)[number]) {
+function startQuick(c: QuickSearch) {
+  haptic('tap')
+  openSearch()
+  origin.value = mapApi.value?.center() ?? null
+  runQuick(c)
+}
+function runQuick(c: QuickSearch) {
   quick.value = c
   q.value = ''
   remote.value = []
