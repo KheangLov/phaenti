@@ -1,18 +1,10 @@
 <template>
   <div>
     <!-- Backdrop -->
-    <AnimatePresence>
-      <motion.div
-        v-if="open"
-        key="backdrop"
-        class="fixed inset-0 z-40 bg-(--ui-bg)"
-        :initial="{ opacity: 0 }"
-        :animate="{ opacity: 1 }"
-        :exit="{ opacity: 0 }"
-        :transition="{ duration: 0.16, ease: 'easeOut' }"
-        @click="close"
-      />
-    </AnimatePresence>
+    <!-- Backdrop: pure CSS opacity, runs on the compositor even while the keyboard opens -->
+    <Transition name="veil">
+      <div v-if="open" class="fixed inset-0 z-40 bg-(--ui-bg)" @click="close" />
+    </Transition>
 
     <motion.div
       class="pt-safe fixed inset-x-0 top-0 z-50 px-3"
@@ -82,14 +74,16 @@
       </div>
 
       <!-- Category chips under the search bar, like Google Maps -->
-      <AnimatePresence>
-        <motion.div
+      <!-- Leaving, the chips are lifted out of the layout so the panel doesn't jump up after them -->
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0 -translate-y-1.5"
+        leave-active-class="!absolute inset-x-0 top-[calc(env(safe-area-inset-top)+3.5rem)] !mt-0 transition duration-150 ease-in pointer-events-none"
+        leave-to-class="opacity-0 -translate-y-1.5"
+      >
+        <div
           v-if="!open && chips"
-          key="chips"
           class="-mx-3 mt-2 overflow-x-auto overscroll-x-contain px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          :initial="{ opacity: 0, y: -6 }"
-          :animate="{ opacity: 1, y: 0 }"
-          :exit="{ opacity: 0, y: -6 }"
         >
           <div class="mx-auto flex w-max gap-1.5 pb-1">
             <button
@@ -104,28 +98,23 @@
               {{ quickLabel(quickKey(c), c.label) }}
             </button>
           </div>
-        </motion.div>
-      </AnimatePresence>
+        </div>
+      </Transition>
 
       <!-- Panel -->
-      <AnimatePresence>
-        <motion.div
+      <Transition name="panel">
+        <div
           v-if="open"
-          key="panel"
           class="search-panel mx-auto mt-2 w-full max-w-xl min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pb-safe [scrollbar-width:none]"
-          :initial="{ opacity: 0, y: -8 }"
-          :animate="{ opacity: 1, y: 0 }"
-          :exit="{ opacity: 0, y: -6 }"
-          :transition="{ duration: 0.16, ease: 'easeOut' }"
           @mousedown.prevent
           @pointerdown="e => { if (e.pointerType !== 'mouse') kbd = false }"
         >
           <!-- Idle: shortcuts, recents, provinces -->
           <template v-if="!q.trim() && !quick">
-            <section class="mt-1 mb-5">
+            <section class="sec mt-1 mb-5" style="--s:0">
               <PersonalShortcuts @picked="close" />
             </section>
-            <section v-if="settled" class="mb-5">
+            <section class="sec mb-5" style="--s:1">
               <h3 class="section">{{ t('search.nearby') }}</h3>
               <div class="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <div class="grid w-max grid-flow-col grid-rows-2 gap-2">
@@ -133,8 +122,8 @@
                     v-for="(c, i) in QUICK_SEARCHES"
                     :key="quickKey(c)"
                     v-press
-                    class="tile enter flex h-11 items-center gap-2 rounded-2xl bg-(--ui-bg-elevated) pl-1.5 pr-3.5 text-sm font-medium"
-                    :style="{ '--i': Math.min(i, 10) }"
+                    class="tile flex h-11 items-center gap-2 rounded-2xl bg-(--ui-bg-elevated) pl-1.5 pr-3.5 text-sm font-medium"
+                    
                     @click="runQuick(c)"
                   >
                     <span class="grid size-8 place-items-center rounded-xl text-white" :style="{ background: chipBg(c) }">
@@ -146,13 +135,13 @@
               </div>
             </section>
 
-            <section v-if="visibleRecents.length" class="mt-5">
+            <section v-if="visibleRecents.length" class="sec mt-5" style="--s:2">
               <div class="flex items-center justify-between">
                 <h3 class="section">{{ t('search.recent') }}</h3>
                 <button class="px-1 text-xs font-medium text-(--ui-text-muted)" @click="clearRecents">{{ t('search.clearRecent') }}</button>
               </div>
               <TransitionGroup tag="div" class="card" move-class="transition-transform duration-200" leave-active-class="transition duration-150 absolute inset-x-1" leave-to-class="opacity-0 -translate-x-4">
-                <div v-for="(r, i) in visibleRecents" :key="`${r.kind}${r.title}`" class="row-wrap enter" :style="{ '--i': i }">
+                <div v-for="(r, i) in visibleRecents" :key="`${r.kind}${r.title}`" class="row-wrap">
                   <button v-press class="row" @click="runRecent(r)">
                     <span class="icon text-(--ui-text-muted)" style="--tint: var(--ui-text-dimmed)"><UIcon name="i-lucide-history" class="size-[18px]" /></span>
                     <span class="min-w-0 flex-1">
@@ -171,7 +160,7 @@
               </TransitionGroup>
             </section>
 
-            <section v-if="provinces.length && settled" class="enter mt-5">
+            <section v-if="provinces.length && settled" class="sec mt-5" style="--s:3">
               <h3 class="section">{{ t('search.explore') }}</h3>
               <div class="flex flex-wrap gap-1.5">
                 <button
@@ -240,8 +229,8 @@
               <p class="mt-2 text-sm text-(--ui-text-muted)">{{ error || t('search.noMatches') }}</p>
             </div>
           </template>
-        </motion.div>
-      </AnimatePresence>
+        </div>
+      </Transition>
     </motion.div>
   </div>
 </template>
@@ -654,10 +643,22 @@ defineExpose({ openSearch: () => { openSearch(); input.value?.focus() }, close }
   -webkit-tap-highlight-color: transparent;
 }
 .trail:last-child { @apply mr-1; }
-/* Cheap CSS entrance (no per-item JS animation) */
+/* Opening choreography: veil fades, panel rises, sections follow 40 ms apart.
+   Only opacity/transform, so it stays on the compositor while the keyboard slides up. */
+.veil-enter-active { transition: opacity 0.24s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.veil-leave-active { transition: opacity 0.18s ease-in; }
+.veil-enter-from, .veil-leave-to { opacity: 0; }
+.panel-enter-active { transition: opacity 0.26s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1); will-change: transform, opacity; }
+.panel-leave-active { transition: opacity 0.14s ease-in, transform 0.14s ease-in; }
+.panel-enter-from { opacity: 0; transform: translateY(14px); }
+.panel-leave-to { opacity: 0; transform: translateY(6px); }
+/* One animation per section, never swapped mid-flight (swapping restarts it and flickers) */
+.sec { animation: rise 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(50ms + var(--s, 0) * 40ms); }
+/* Cheap CSS entrance for results as you type (no per-item JS animation) */
 .enter { animation: rise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 18ms); }
-@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
-  .enter, .rippling::after { animation: none; }
+  .enter, .sec, .rippling::after { animation: none; }
+  .panel-enter-active, .veil-enter-active { transition-duration: 0.01s; }
 }
 </style>

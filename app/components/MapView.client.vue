@@ -56,7 +56,7 @@ let hideTimer: ReturnType<typeof setTimeout> | undefined
 watch(searching, (v) => {
   clearTimeout(hideTimer)
   if (!el.value) return
-  if (v) hideTimer = setTimeout(() => { if (searching.value && el.value) el.value.style.visibility = 'hidden' }, 170)
+  if (v) hideTimer = setTimeout(() => { if (searching.value && el.value) el.value.style.visibility = 'hidden' }, 260)
   else el.value.style.visibility = ''
 })
 const styleDef = computed(() => styleById(styleChoice.value === AUTO_STYLE ? (colorMode.value === 'dark' ? 'dark' : 'liberty') : styleChoice.value))
