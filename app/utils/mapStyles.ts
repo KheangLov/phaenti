@@ -87,12 +87,13 @@ export const MAP_STYLES: MapStyleDef[] = [
     swatch: { land: '#f2edde', water: '#a6cbed', park: '#cfe0b0', road: WHITE, roadMajor: '#e8c48a', building: '#e6dccb' } },
 ]
 
-// Sentinel-2 cloudless by EOX: free for non-commercial use with attribution (10 m pixels,
-// so sharp for towns, fields, rivers and coast; blurry at street level)
-const EOX_2024 = 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2024_3857/default/g/{z}/{y}/{x}.jpg'
+// Esri World Imagery: sub-metre satellite/aerial photos for most of the world (CC BY 4.0,
+// credit required). `blankTile=false` makes missing high-zoom tiles 404, so the map keeps
+// showing the sharpest lower-zoom photo instead of a grey "no data" tile.
+const ESRI_IMAGERY = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false'
 MAP_STYLES.splice(4, 0, {
-  id: 'satellite', label: 'Satellite', tag: 'Hybrid', dark: true, url: `${OFM}/liberty`, satellite: EOX_2024,
-  credit: 'Imagery: Sentinel-2 cloudless – s2maps.eu by EOX IT Services GmbH (Copernicus Sentinel data 2024)',
+  id: 'satellite', label: 'Satellite', tag: 'Hybrid', dark: true, url: `${OFM}/liberty`, satellite: ESRI_IMAGERY,
+  credit: 'Imagery: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
   swatch: { land: '#4d5a3a', water: '#1d3b52', park: '#3f5a33', road: '#e9e4d8', roadMajor: '#f4c26b', building: '#6b6656' },
 })
 
@@ -175,30 +176,50 @@ export function fontsOf(style: StyleSpecification) {
   }
 }
 
-/** Satellite imagery under the basemap's roads and labels (Google's "Satellite" with labels) */
+/** Layers we draw over satellite imagery carry this flag, so "Labels" can switch them off */
+export const OVERLAY_FLAG = 'phaenti:overlay'
+/** Sea colour for the hidden-country mask on satellite (matches Esri's ocean) */
+export const SAT_SEA = '#0d2a43'
+
+/**
+ * Google-style "Satellite" with labels: photos at the bottom, then a light road network
+ * (major roads in warm yellow, streets as thin white lines), boundaries and labels with
+ * dark halos so they read on any photo.
+ */
 export function hybrid(style: StyleSpecification, tiles: string): StyleSpecification {
   const s = structuredClone(style)
   const keep: LayerSpecification[] = []
-  for (const layer of s.layers as (LayerSpecification & { 'source-layer'?: string; paint?: Record<string, unknown>; layout?: Record<string, unknown> })[]) {
+  const major = /motorway|trunk|primary/
+  const mid = /secondary|tertiary/
+  const skipRoad = /casing|path|rail|ferry|aerialway|pier|area|transit|tunnel/
+  for (const layer of s.layers as (LayerSpecification & { 'source-layer'?: string; paint?: Record<string, unknown>; layout?: Record<string, unknown>; metadata?: Record<string, unknown> })[]) {
     const sl = layer['source-layer']
+    const id = layer.id
     if (layer.type === 'symbol') {
       layer.paint ??= {}
       if (layer.layout?.['text-field']) {
-        layer.paint['text-color'] = WHITE
-        layer.paint['text-halo-color'] = 'rgba(0,0,0,0.75)'
-        layer.paint['text-halo-width'] = 1.4
+        const water = sl === 'water_name' || /water/.test(id)
+        layer.paint['text-color'] = water ? '#bfe3ff' : WHITE
+        layer.paint['text-halo-color'] = 'rgba(0,0,0,0.78)'
+        layer.paint['text-halo-width'] = 1.5
+        layer.paint['text-halo-blur'] = 0.5
       }
-      keep.push(layer)
-    } else if (layer.type === 'line' && (sl === 'transportation' || sl === 'boundary')) {
+    } else if (layer.type === 'line' && sl === 'transportation' && !skipRoad.test(id)) {
       layer.paint ??= {}
-      layer.paint['line-opacity'] = sl === 'boundary' ? 0.6 : 0.55
-      keep.push(layer)
-    }
+      const isMajor = major.test(id)
+      layer.paint['line-color'] = isMajor ? '#f6c453' : mid.test(id) ? '#fde7a8' : WHITE
+      layer.paint['line-opacity'] = isMajor ? 0.8 : mid.test(id) ? 0.6 : ['interpolate', ['linear'], ['zoom'], 13, 0, 15, 0.45]
+    } else if (layer.type === 'line' && sl === 'boundary') {
+      layer.paint ??= {}
+      layer.paint['line-color'] = 'rgba(255,255,255,0.7)'
+    } else continue
+    layer.metadata = { ...(layer.metadata ?? {}), [OVERLAY_FLAG]: true }
+    keep.push(layer)
   }
-  s.sources = { ...s.sources, satellite: { type: 'raster', tiles: [tiles], tileSize: 256, maxzoom: 14 } }
+  s.sources = { ...s.sources, satellite: { type: 'raster', tiles: [tiles], tileSize: 256, maxzoom: 19 } }
   s.layers = [
-    { id: 'background', type: 'background', paint: { 'background-color': '#10304a' } },
-    { id: 'satellite', type: 'raster', source: 'satellite', paint: { 'raster-fade-duration': 150 } },
+    { id: 'background', type: 'background', paint: { 'background-color': SAT_SEA } },
+    { id: 'satellite', type: 'raster', source: 'satellite', paint: { 'raster-fade-duration': 120, 'raster-contrast': 0.06, 'raster-saturation': 0.08 } },
     ...keep,
   ]
   return s

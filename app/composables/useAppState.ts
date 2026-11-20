@@ -106,6 +106,9 @@ function lastMode(): TravelMode {
 }
 const showBoundaries = pref('phaenti:boundaries', true)
 const showExplored = pref('phaenti:explored', true)
+/** Satellite: roads & labels on top, and 3D terrain */
+const satLabels = pref('phaenti:sat-labels', true)
+const satTerrain = pref('phaenti:sat-terrain', false)
 
 export function useAppState() {
   function select(id: string | null) {
@@ -152,7 +155,7 @@ export function useAppState() {
     selectedId, draft, area, picking, pendingCategory, searching, filter, snap, mapApi,
     route, measuring, measurePts, measureClosed, openRoute, photoViewer, discoverOpen,
     camera, zooming, locateMode,
-    showBoundaries, showExplored, styleChoice,
+    showBoundaries, showExplored, styleChoice, satLabels, satTerrain,
     select, openDraft, openArea, closeAll,
   }
 }

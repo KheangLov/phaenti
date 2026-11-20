@@ -91,7 +91,7 @@ Logic lives in `app/composables/useHidden.ts`.
 - **My location** works like Google's: first tap shows the blue dot (with an accuracy circle and a beam showing which way you face) and follows you; second tap turns the map with your phone (compass mode); moving the map stops following. GPS pauses while the app is in the background.
 - **Scale bar** appears while zooming.
 - **Category chips** under the search bar: Food, Cafés, Gas, ATMs, Hotels, Markets, Temples, Pharmacies, Hospitals… search around the map centre in one tap.
-- **Satellite** map style (hybrid: imagery + roads + labels) from EOX Sentinel-2 cloudless 2024. Free for non-commercial use; its licence requires the small imagery credit shown in that style. 10 m pixels: great for landscapes, coast and towns, blurry at street level.
+- **Satellite** map style (hybrid, like Google): Esri World Imagery — sub-metre photos where available, sharp to zoom ~19 in towns — with a light road network (major roads in yellow) and labels with dark halos. Where Esri has no close-up, the map keeps the sharpest lower-zoom photo instead of a grey tile. Options in ⧉ Map style: **Labels & roads** on/off and **3D terrain** (AWS open elevation data; tilt to see Kulen, Bokor, the Cardamoms). Esri's licence (CC BY 4.0) needs the small imagery credit shown in that style only.
 
 ## Bottom sheet
 

@@ -313,6 +313,9 @@ export const en = {
     body: 'Phaenti doesn’t show places in this country.',
   },
   styles: {
+    satLabels: 'Labels & roads',
+    satTerrain: '3D terrain',
+    satTerrainHint: 'Tilt the map to see mountains (uses more battery)',
     title: 'Map style',
     desc: 'Pick a look. Your pins and Cambodia layers work on every style.',
     boundaries: 'Cambodia boundaries',
@@ -637,6 +640,9 @@ export const km: Shape<typeof en> = {
     body: 'Phaenti មិនបង្ហាញទីកន្លែងក្នុងប្រទេសនេះទេ។',
   },
   styles: {
+    satLabels: 'ឈ្មោះ និងផ្លូវ',
+    satTerrain: 'ដីភ្នំ 3D',
+    satTerrainHint: 'ផ្អៀងផែនទីដើម្បីមើលភ្នំ (ប្រើថាមពលច្រើនជាង)',
     title: 'រចនាប័ទ្មផែនទី',
     desc: 'ជ្រើសរើសរូបរាង។ ម្ជុល និងស្រទាប់កម្ពុជារបស់អ្នកដំណើរការលើគ្រប់រចនាប័ទ្ម។',
     boundaries: 'ព្រំដែនកម្ពុជា',

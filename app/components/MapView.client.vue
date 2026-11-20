@@ -16,7 +16,7 @@
     </Transition>
     <p
       v-if="styleDef.satellite"
-      class="pointer-events-none absolute left-2 z-[1] max-w-[70%] text-[9px] leading-tight text-white/75 [text-shadow:0_1px_2px_rgb(0_0_0/0.8)]"
+      class="pointer-events-none absolute left-2 z-[1] max-w-[58%] text-[9px] leading-tight text-white/80 [text-shadow:0_1px_2px_rgb(0_0_0/0.9)]"
       :style="{ bottom: `${(snap === 'peek' ? 156 : 0) + 6}px` }"
     >
       {{ styleDef.credit }}
@@ -26,7 +26,7 @@
 
 <script setup lang="ts">
 import type { Map as MLMap, GeoJSONSource, MapMouseEvent, MapTouchEvent, ExpressionSpecification, StyleSpecification } from 'maplibre-gl'
-import { AUTO_STYLE, styleById, recolor, hybrid, fontsOf, type MapStyleDef } from '~/utils/mapStyles'
+import { AUTO_STYLE, styleById, recolor, hybrid, fontsOf, OVERLAY_FLAG, SAT_SEA, type MapStyleDef } from '~/utils/mapStyles'
 import { STATUS_COLORS } from '~/utils/db'
 import { WHITE, whiteA } from '~/utils/colors'
 import { haversineKm, formatKm, type LngLat } from '~/utils/geo'
@@ -48,7 +48,7 @@ const { t } = useLang()
 
 let map: MLMap | null = null
 let ml: typeof import('maplibre-gl') | null = null
-const { styleChoice, snap, camera, zooming, locateMode } = useAppState()
+const { styleChoice, snap, camera, zooming, locateMode, satLabels, satTerrain } = useAppState()
 const styleDef = computed(() => styleById(styleChoice.value === AUTO_STYLE ? (colorMode.value === 'dark' ? 'dark' : 'liberty') : styleChoice.value))
 const isDark = computed(() => styleDef.value.dark)
 let fonts = { regular: ['Noto Sans Regular'], bold: ['Noto Sans Bold'], italic: ['Noto Sans Italic'] }
@@ -129,7 +129,28 @@ async function addLayers() {
   if (lastMe) syncMe()
   syncRoute(false)
   syncMeasure()
+  applySatellite()
 }
+
+// ---------- Satellite extras: labels on/off and 3D terrain ----------
+const DEM_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'
+function applySatellite() {
+  if (!map || !styleDef.value.satellite) return
+  const vis = satLabels.value ? 'visible' : 'none'
+  for (const l of map.getStyle().layers) {
+    if ((l as { metadata?: Record<string, unknown> }).metadata?.[OVERLAY_FLAG]) map.setLayoutProperty(l.id, 'visibility', vis)
+  }
+  if (satTerrain.value) {
+    if (!map.getSource('dem')) map.addSource('dem', { type: 'raster-dem', tiles: [DEM_TILES], encoding: 'terrarium', tileSize: 256, maxzoom: 15 })
+    map.setTerrain({ source: 'dem', exaggeration: 1.5 })
+    const m = map as unknown as { setSky?: (s: Record<string, unknown>) => void }
+    m.setSky?.({ 'sky-color': '#6fa8dc', 'horizon-color': '#cfe3f5', 'fog-color': '#dbe9f6', 'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.35 })
+    if (map.getPitch() < 20) map.easeTo({ pitch: 55, duration: 900 })
+  } else if (map.getTerrain()) {
+    map.setTerrain(null)
+  }
+}
+watch([satLabels, satTerrain], () => applySatellite())
 
 // ---------- Hidden countries (Thailand) ----------
 /** Basemap filters may use the legacy syntax, which can't be mixed with expressions. */
@@ -191,11 +212,18 @@ function hideCountries() {
   //    above every basemap layer, so it blends into the surrounding water.
   map.addSource('hidden', { type: 'geojson', data: `${location.origin}${HIDDEN_GEO_URL}`, maxzoom: 12, tolerance: 0.6, buffer: 32 })
   map.addLayer({ id: 'hidden-fill', type: 'fill', source: 'hidden', paint: { 'fill-color': waterColor(style), 'fill-antialias': true } })
+  // On photos a hard edge looks cut out: feather it so the "sea" blends into the coast
+  if (styleDef.value.satellite) {
+    map.addLayer({
+      id: 'hidden-edge', type: 'line', source: 'hidden',
+      paint: { 'line-color': SAT_SEA, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 3, 10, 10, 14, 18], 'line-blur': ['interpolate', ['linear'], ['zoom'], 5, 2, 10, 8, 14, 14], 'line-opacity': 0.9 },
+    })
+  }
 }
 
 /** The style's sea colour: a plain colour, or a zoom-only expression we can reuse as-is. */
 function waterColor(style: StyleSpecification): unknown {
-  if (styleDef.value.satellite) return '#10304a'
+  if (styleDef.value.satellite) return SAT_SEA
   const fills = style.layers.filter(l => l.type === 'fill') as { id: string; 'source-layer'?: string; paint?: Record<string, unknown> }[]
   const water = fills.find(l => /ocean|sea/.test(l.id))
     ?? fills.find(l => l['source-layer'] === 'water' || l['source-layer'] === 'ocean')

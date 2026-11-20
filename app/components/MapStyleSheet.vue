@@ -54,6 +54,23 @@
           </label>
         </div>
 
+        <!-- Satellite options -->
+        <div v-if="current.satellite" class="mt-3 divide-y divide-(--ui-border) overflow-hidden rounded-2xl border border-(--ui-border)">
+          <label class="flex items-center gap-3 px-4 py-3">
+            <UIcon name="i-lucide-tags" class="size-5 text-amber-500" />
+            <span class="flex-1 text-sm">{{ t('styles.satLabels') }}</span>
+            <USwitch v-model="satLabels" />
+          </label>
+          <label class="flex items-center gap-3 px-4 py-3">
+            <UIcon name="i-lucide-mountain-snow" class="size-5 text-sky-500" />
+            <span class="flex-1">
+              <span class="block text-sm">{{ t('styles.satTerrain') }}</span>
+              <span class="block text-xs text-(--ui-text-muted)">{{ t('styles.satTerrainHint') }}</span>
+            </span>
+            <USwitch v-model="satTerrain" />
+          </label>
+        </div>
+
         <p v-if="current.extrude" class="mt-1 text-center text-[11px] text-(--ui-text-muted)">{{ t('styles.tip3d') }}</p>
       </div>
     </template>
@@ -66,7 +83,7 @@ import { MAP_STYLES, AUTO_STYLE, styleById, type Swatch } from '~/utils/mapStyle
 import { WHITE } from '~/utils/colors'
 
 const open = defineModel<boolean>('open', { default: false })
-const { styleChoice, showBoundaries, showExplored } = useAppState()
+const { styleChoice, showBoundaries, showExplored, satLabels, satTerrain } = useAppState()
 const colorMode = useColorMode()
 const { t, styleLabel, styleTag } = useLang()
 
