@@ -48,10 +48,23 @@ function inRing(x: number, y: number, ring: Ring) {
 }
 
 /** Is this point inside a hidden country? */
+const memo = new Map<string, boolean>()
 export function isHiddenPoint(lat: number, lng: number) {
   if (lng < BBOX[0] || lng > BBOX[2] || lat < BBOX[1] || lat > BBOX[3]) return false
   const list = polys.value
   if (!list) return false
+  // Border polygons have thousands of vertices; the same saved places and recents are
+  // checked over and over, so remember each answer (~1 m precision)
+  const k = `${lat.toFixed(5)},${lng.toFixed(5)}`
+  let v = memo.get(k)
+  if (v === undefined) {
+    v = hiddenCheck(lat, lng, list)
+    if (memo.size > 20000) memo.clear()
+    memo.set(k, v)
+  }
+  return v
+}
+function hiddenCheck(lat: number, lng: number, list: NonNullable<typeof polys.value>) {
   for (const { bbox, poly } of list) {
     if (lng < bbox[0] || lng > bbox[2] || lat < bbox[1] || lat > bbox[3]) continue
     if (inRing(lng, lat, poly[0]!) && !poly.slice(1).some(h => inRing(lng, lat, h))) return true

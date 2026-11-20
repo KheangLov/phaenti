@@ -50,6 +50,15 @@ let map: MLMap | null = null
 let ml: typeof import('maplibre-gl') | null = null
 const { styleChoice, snap, camera, zooming, locateMode, satLabels, satTerrain, satHD, satSource, showTraffic, showStreet, streetView } = useAppState()
 const keys = useKeys()
+// While the search panel covers the screen, stop compositing the map underneath
+const { searching } = useAppState()
+let hideTimer: ReturnType<typeof setTimeout> | undefined
+watch(searching, (v) => {
+  clearTimeout(hideTimer)
+  if (!el.value) return
+  if (v) hideTimer = setTimeout(() => { if (searching.value && el.value) el.value.style.visibility = 'hidden' }, 170)
+  else el.value.style.visibility = ''
+})
 const styleDef = computed(() => styleById(styleChoice.value === AUTO_STYLE ? (colorMode.value === 'dark' ? 'dark' : 'liberty') : styleChoice.value))
 const isDark = computed(() => styleDef.value.dark)
 let fonts = { regular: ['Noto Sans Regular'], bold: ['Noto Sans Bold'], italic: ['Noto Sans Italic'] }

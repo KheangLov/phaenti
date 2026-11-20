@@ -47,6 +47,8 @@ let lookupP: Promise<void> | null = null
 
 interface Entry { code: string; level: 1 | 2 | 3 | 4; en: string; n: string; km: string; unit: string; unitKm: string }
 let entries: Entry[] = []
+/** Bumped when the village slice finishes, so open searches refresh */
+const entriesVersion = ref(0)
 const names = new Map<string, string>()
 const namesKm = new Map<string, string>()
 export const UNIT_KM: Record<number, string> = { 1: 'ខេត្ត', 2: 'ស្រុក', 3: 'ឃុំ', 4: 'ភូមិ' }
@@ -56,7 +58,7 @@ const strip = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerC
 function loadIndex() {
   indexP ??= fetch('/admin/admin-index.json')
     .then(r => r.json())
-    .then((d: AdminIndex) => {
+    .then(async (d: AdminIndex) => {
       const list: Entry[] = []
       for (const [code, a] of Object.entries(d.areas)) {
         names.set(code, a[1])
@@ -68,11 +70,16 @@ function loadIndex() {
         if (km && !namesKm.has(code)) namesKm.set(code, km)
         list.push({ code, level: level as 2 | 3, en, n: strip(en), km, unit: unitEn || LEVEL_LABEL[level]!, unitKm: unitKm || UNIT_KM[level]! })
       }
-      for (const [code, en, km] of d.villages) {
-        list.push({ code, level: 4, en, n: strip(en), km, unit: 'Village', unitKm: 'ភូមិ' })
-      }
       entries = list
       index.value = d
+      // ~14,000 villages: prepare them in small slices between frames so a tap on the
+      // search box never waits behind this work
+      const V = d.villages
+      for (let i = 0; i < V.length; i += 1500) {
+        await new Promise<void>(res => ((window as any).requestIdleCallback ?? ((f: () => void) => setTimeout(f, 16)))(() => res(), { timeout: 200 }))
+        for (const [code, en, km] of V.slice(i, i + 1500)) list.push({ code, level: 4, en, n: strip(en), km, unit: 'Village', unitKm: 'ភូមិ' })
+      }
+      entriesVersion.value++
     })
     .catch((e) => {
       indexP = null
@@ -158,6 +165,7 @@ function chain(code: string, level: number, khmer = false): string {
 }
 
 function search(q: string, limit = 8): AdminHit[] {
+  void entriesVersion.value
   const s = q.trim()
   if (s.length < 2 || !entries.length) return []
   const n = strip(s)

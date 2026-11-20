@@ -117,6 +117,17 @@ Logic lives in `app/composables/useHidden.ts`.
 - The map draws at most 2× the screen resolution: no visible difference on 3× phones, about half the drawing work.
 - The map library, its worker, the map style and the label outline download at the same time; connections to the tile servers open before the map starts.
 - Recently seen tiles stay in memory longer, and the tile index refreshes in the background instead of being stuck on an old version.
+- Opening search no longer blurs the whole map behind it: the panel is a plain background that fades in, and the map stops drawing while it is hidden.
+- The 14,000 village names for search are prepared in small slices when the phone is idle, not all at once.
+- Whether a point is in a hidden area is remembered per point, so recents and saved places aren't re-checked against the border outline every time search opens.
+- Search rows animate with CSS instead of one JavaScript animation per row. The slower sections (Nearby, Explore Cambodia) appear one frame after the panel opens.
+
+## Search list
+
+- Rows are grouped in rounded cards with thin dividers. A tap shows a ripple from your finger and a small press-in.
+- The arrow keys show a highlighted row with an outline; touching the list clears it, so a highlight never stays stuck after a tap.
+- The matching part of a name is shown in bold.
+- Each recent search has two buttons: ↖ puts it back in the search box, and × removes it.
 
 ## Map styles
 

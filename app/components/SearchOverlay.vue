@@ -5,11 +5,11 @@
       <motion.div
         v-if="open"
         key="backdrop"
-        class="fixed inset-0 z-40 bg-(--ui-bg)/70 backdrop-blur-xl"
+        class="fixed inset-0 z-40 bg-(--ui-bg)"
         :initial="{ opacity: 0 }"
         :animate="{ opacity: 1 }"
         :exit="{ opacity: 0 }"
-        :transition="{ duration: 0.22 }"
+        :transition="{ duration: 0.16, ease: 'easeOut' }"
         @click="close"
       />
     </AnimatePresence>
@@ -112,36 +112,36 @@
         <motion.div
           v-if="open"
           key="panel"
-          class="mx-auto mt-2 w-full max-w-xl min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pb-safe [scrollbar-width:none]"
-          :initial="{ opacity: 0, y: -10 }"
+          class="search-panel mx-auto mt-2 w-full max-w-xl min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pb-safe [scrollbar-width:none]"
+          :initial="{ opacity: 0, y: -8 }"
           :animate="{ opacity: 1, y: 0 }"
-          :exit="{ opacity: 0, y: -10 }"
-          :transition="{ duration: 0.2 }"
+          :exit="{ opacity: 0, y: -6 }"
+          :transition="{ duration: 0.16, ease: 'easeOut' }"
           @mousedown.prevent
+          @pointerdown="e => { if (e.pointerType !== 'mouse') kbd = false }"
         >
           <!-- Idle: shortcuts, recents, provinces -->
           <template v-if="!q.trim() && !quick">
             <section class="mt-1 mb-5">
               <PersonalShortcuts @picked="close" />
             </section>
-            <section>
+            <section v-if="settled" class="mb-5">
               <h3 class="section">{{ t('search.nearby') }}</h3>
               <div class="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <div class="grid w-max grid-flow-col grid-rows-2 gap-2">
-                  <motion.button
+                  <button
                     v-for="(c, i) in QUICK_SEARCHES"
                     :key="quickKey(c)"
-                    class="flex h-11 items-center gap-2 rounded-2xl bg-(--ui-bg-elevated) pl-1.5 pr-3.5 text-sm font-medium active:scale-95 transition-transform"
-                    :initial="{ opacity: 0, y: 8 }"
-                    :animate="{ opacity: 1, y: 0 }"
-                    :transition="{ delay: i * 0.02 }"
+                    v-press
+                    class="tile enter flex h-11 items-center gap-2 rounded-2xl bg-(--ui-bg-elevated) pl-1.5 pr-3.5 text-sm font-medium"
+                    :style="{ '--i': Math.min(i, 10) }"
                     @click="runQuick(c)"
                   >
                     <span class="grid size-8 place-items-center rounded-xl text-white" :style="{ background: chipBg(c) }">
                       <UIcon :name="`i-lucide-${chipIcon(c)}`" class="size-4.5" />
                     </span>
                     {{ quickLabel(quickKey(c), c.label) }}
-                  </motion.button>
+                  </button>
                 </div>
               </div>
             </section>
@@ -151,19 +151,27 @@
                 <h3 class="section">{{ t('search.recent') }}</h3>
                 <button class="px-1 text-xs font-medium text-(--ui-text-muted)" @click="clearRecents">{{ t('search.clearRecent') }}</button>
               </div>
-              <div class="card">
-                <button v-for="(r, i) in visibleRecents" :key="i" class="row" @click="runRecent(r)">
-                  <span class="icon bg-(--ui-bg-elevated) text-(--ui-text-muted)"><UIcon name="i-lucide-history" class="size-4.5" /></span>
-                  <span class="min-w-0 flex-1">
-                    <span class="block truncate text-[15px] font-medium">{{ isKm && r.km ? r.km : r.title }}</span>
-                    <span v-if="r.subtitle" class="block truncate text-[13px] text-(--ui-text-muted)">{{ isKm && r.subKm ? r.subKm : r.subtitle }}</span>
-                  </span>
-                  <UIcon name="i-lucide-arrow-up-left" class="size-4 text-(--ui-text-dimmed)" />
-                </button>
-              </div>
+              <TransitionGroup tag="div" class="card" move-class="transition-transform duration-200" leave-active-class="transition duration-150 absolute inset-x-1" leave-to-class="opacity-0 -translate-x-4">
+                <div v-for="(r, i) in visibleRecents" :key="`${r.kind}${r.title}`" class="row-wrap enter" :style="{ '--i': i }">
+                  <button v-press class="row" @click="runRecent(r)">
+                    <span class="icon text-(--ui-text-muted)" style="--tint: var(--ui-text-dimmed)"><UIcon name="i-lucide-history" class="size-[18px]" /></span>
+                    <span class="min-w-0 flex-1">
+                      <span class="block truncate text-[15px] font-medium text-(--ui-text-highlighted)">{{ isKm && r.km ? r.km : r.title }}</span>
+                      <span v-if="r.subtitle" class="block truncate text-[13px] text-(--ui-text-muted)">{{ isKm && r.subKm ? r.subKm : r.subtitle }}</span>
+                    </span>
+                  </button>
+                  <!-- Like Google: fill the box with this search, or forget it -->
+                  <button class="trail" :aria-label="t('search.useQuery')" @click="fillFrom(r)">
+                    <UIcon name="i-lucide-arrow-up-left" class="size-4" />
+                  </button>
+                  <button class="trail" :aria-label="t('search.forget')" @click="forget(r)">
+                    <UIcon name="i-lucide-x" class="size-4" />
+                  </button>
+                </div>
+              </TransitionGroup>
             </section>
 
-            <section v-if="provinces.length" class="mt-5">
+            <section v-if="provinces.length && settled" class="enter mt-5">
               <h3 class="section">{{ t('search.explore') }}</h3>
               <div class="flex flex-wrap gap-1.5">
                 <button
@@ -196,30 +204,30 @@
             <section v-for="sec in sections" :key="sec.title" class="mb-4">
               <h3 v-if="sec.title" class="section">{{ sec.title }}</h3>
               <div class="card">
-                <motion.button
-                  v-for="it in sec.items"
-                  :key="it.key"
-                  class="row"
-                  :class="it.index === active ? 'bg-(--ui-bg-elevated)' : ''"
-                  :initial="{ opacity: 0, x: -6 }"
-                  :animate="{ opacity: 1, x: 0 }"
-                  :transition="{ delay: Math.min(it.index, 10) * 0.02, duration: 0.18 }"
-                  @mouseenter="active = it.index"
-                  @click="pick(it.index)"
-                >
-                  <img v-if="it.pin" :src="it.pin" alt="" class="h-10 w-8 shrink-0">
-                  <span v-else class="icon" :style="{ background: `${it.color}1f`, color: it.color }">
-                    <UIcon :name="it.icon" class="size-4.5" />
-                  </span>
-                  <span class="min-w-0 flex-1">
-                    <span class="block truncate text-[15px] font-medium">
-                      <template v-for="(seg, j) in highlight(it.title)" :key="j"><b v-if="seg.hit" class="font-semibold text-(--ui-primary)">{{ seg.text }}</b><template v-else>{{ seg.text }}</template></template>
-                      <span v-if="it.km" class="ml-1.5 font-normal text-(--ui-text-muted)" lang="km">{{ it.km }}</span>
+                <div v-for="it in sec.items" :key="it.key" class="row-wrap enter" :style="{ '--i': Math.min(it.index, 8) }">
+                  <button
+                    v-press
+                    class="row"
+                    :class="{ 'is-active': kbd && it.index === active }"
+                    :aria-selected="kbd && it.index === active"
+                    @pointermove="onHover($event, it.index)"
+                    @click="pick(it.index)"
+                  >
+                    <span v-if="it.pin" class="icon" :style="{ '--tint': it.color || '#8b5cf6' }"><img :src="it.pin" alt="" class="h-8 w-[26px]"></span>
+                    <span v-else class="icon" :style="{ '--tint': it.color, color: it.color }">
+                      <UIcon :name="it.icon" class="size-[18px]" />
                     </span>
-                    <span v-if="it.subtitle" class="block truncate text-[13px] text-(--ui-text-muted)">{{ it.subtitle }}</span>
-                  </span>
-                  <span v-if="it.meta" class="shrink-0 text-xs font-medium text-(--ui-text-dimmed)">{{ it.meta }}</span>
-                </motion.button>
+                    <span class="min-w-0 flex-1">
+                      <span class="block truncate text-[15px] text-(--ui-text-highlighted)">
+                        <template v-for="(seg, j) in highlight(it.title)" :key="j"><b v-if="seg.hit" class="font-bold">{{ seg.text }}</b><span v-else class="font-medium">{{ seg.text }}</span></template>
+                        <span v-if="it.km" class="ml-1.5 font-normal text-(--ui-text-muted)" lang="km">{{ it.km }}</span>
+                      </span>
+                      <span v-if="it.subtitle" class="block truncate text-[13px] text-(--ui-text-muted)">{{ it.subtitle }}</span>
+                    </span>
+                    <span v-if="it.meta" class="meta">{{ it.meta }}</span>
+                    <UIcon v-else name="i-lucide-chevron-right" class="chev size-4 shrink-0" />
+                  </button>
+                </div>
               </div>
             </section>
 
@@ -263,6 +271,37 @@ const quick = ref<QuickSearch | null>(null)
 const chipIcon = (c: QuickSearch) => c.icon ?? cat(c.id).icon
 const chipBg = (c: QuickSearch) => `linear-gradient(135deg, ${c.color ?? cat(c.id).color}, ${c.color2 ?? c.color ?? cat(c.id).color2})`
 const active = ref(0)
+/** Keyboard/mouse highlight is only shown on devices with a real pointer, never stuck after a tap */
+const kbd = ref(false)
+function onHover(e: PointerEvent, i: number) {
+  if (e.pointerType !== 'mouse') return
+  kbd.value = true
+  active.value = i
+}
+watch(q, () => { kbd.value = false })
+/** Heavier idle sections render a frame after the panel opens, so the keyboard animation stays smooth */
+const settled = ref(false)
+watch(() => open.value, (v) => {
+  if (!v) { settled.value = false; return }
+  requestAnimationFrame(() => requestAnimationFrame(() => (settled.value = true)))
+})
+
+// Tap ripple from the finger, Material-style but subtle
+const vPress = {
+  mounted(el: HTMLElement) {
+    el.addEventListener('pointerdown', (e: PointerEvent) => {
+      const r = el.getBoundingClientRect()
+      el.style.setProperty('--px', `${e.clientX - r.left}px`)
+      el.style.setProperty('--py', `${e.clientY - r.top}px`)
+      el.classList.remove('rippling')
+      void el.offsetWidth
+      el.classList.add('rippling')
+    }, { passive: true })
+    el.addEventListener('animationend', (e: AnimationEvent) => {
+      if (e.animationName.includes('ripple')) el.classList.remove('rippling')
+    })
+  },
+}
 const origin = ref<{ lat: number; lng: number } | null>(null)
 
 watch(open, v => (searching.value = v))
@@ -478,7 +517,20 @@ function runRecent(r: Recent) {
 
 function move(d: number) {
   const n = flat.value.length
+  kbd.value = true
   if (n) active.value = (active.value + d + n) % n
+  // Keep the highlighted row in view
+  nextTick(() => document.querySelector('.search-panel .row.is-active')?.scrollIntoView({ block: 'nearest' }))
+}
+function fillFrom(r: Recent) {
+  haptic('tap')
+  q.value = isKm.value && r.km ? r.km : r.title
+  input.value?.focus()
+}
+function forget(r: Recent) {
+  haptic('tap')
+  recents.value = recents.value.filter(x => x !== r)
+  try { localStorage.setItem(RKEY, JSON.stringify(recents.value)) } catch { /* ignore */ }
 }
 
 function openSearch() {
@@ -530,7 +582,70 @@ defineExpose({ openSearch: () => { openSearch(); input.value?.focus() }, close }
 <style scoped>
 @reference "../assets/css/main.css";
 .section { @apply mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-(--ui-text-dimmed); }
-.card { @apply overflow-hidden rounded-2xl border border-(--ui-border)/60 bg-(--ui-bg)/80 py-1 shadow-sm; }
-.row { @apply flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors active:bg-(--ui-bg-elevated); }
-.icon { @apply grid size-10 shrink-0 place-items-center rounded-xl; }
+.card {
+  @apply relative overflow-hidden rounded-[22px] bg-(--ui-bg-elevated)/55 p-1;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ui-border) 70%, transparent);
+}
+.row-wrap { @apply relative flex items-center; }
+/* Hairline between rows, starting after the icon like iOS lists */
+.row-wrap + .row-wrap::before {
+  content: '';
+  @apply pointer-events-none absolute top-0 right-3 left-[64px] h-px bg-(--ui-border)/70;
+}
+.row {
+  @apply relative flex min-h-[60px] w-full min-w-0 flex-1 items-center gap-3 rounded-[18px] px-2.5 py-2 text-left outline-none;
+  isolation: isolate;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s ease, transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2), box-shadow 0.15s ease;
+}
+.row:active { transform: scale(0.985); background: color-mix(in oklab, var(--ui-primary) 7%, transparent); }
+.row:active .icon { transform: scale(0.92); }
+.row:focus-visible, .row.is-active {
+  background: color-mix(in oklab, var(--ui-primary) 9%, var(--ui-bg));
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--ui-primary) 45%, transparent);
+}
+.row.is-active .chev { @apply translate-x-0.5 text-(--ui-primary); }
+/* Ripple from the touch point */
+.row::after, .tile::after {
+  content: '';
+  position: absolute;
+  left: var(--px, 50%);
+  top: var(--py, 50%);
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--ui-primary) 20%, transparent);
+  transform: scale(0);
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+.rippling::after { animation: ripple 0.55s cubic-bezier(0.2, 0.7, 0.3, 1); }
+@keyframes ripple {
+  0% { transform: scale(0); opacity: 1; }
+  100% { transform: scale(34); opacity: 0; }
+}
+.tile { position: relative; isolation: isolate; overflow: hidden; -webkit-tap-highlight-color: transparent; transition: transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+.tile:active { transform: scale(0.95); }
+.icon {
+  @apply grid size-11 shrink-0 place-items-center rounded-[14px];
+  background: color-mix(in oklab, var(--tint, var(--ui-text-dimmed)) 13%, var(--ui-bg));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tint, var(--ui-text-dimmed)) 18%, transparent);
+  transition: transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+.meta { @apply shrink-0 rounded-full bg-(--ui-bg-elevated) px-2 py-0.5 text-[11px] font-semibold tabular-nums text-(--ui-text-muted); }
+.chev { @apply text-(--ui-text-dimmed) transition; }
+.trail {
+  @apply grid size-10 shrink-0 place-items-center rounded-full text-(--ui-text-dimmed) transition active:scale-90 active:bg-(--ui-bg-elevated);
+  -webkit-tap-highlight-color: transparent;
+}
+.trail:last-child { @apply mr-1; }
+/* Cheap CSS entrance (no per-item JS animation) */
+.enter { animation: rise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 18ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .enter, .rippling::after { animation: none; }
+}
 </style>
