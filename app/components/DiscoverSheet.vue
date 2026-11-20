@@ -62,8 +62,18 @@
                 <div v-else class="grid size-full place-items-center" :style="{ background: `linear-gradient(135deg, ${categoryOf(p.category).color}, ${categoryOf(p.category).color2})` }">
                   <UIcon :name="`i-lucide-${categoryOf(p.category).icon}`" class="size-10 text-white/90" />
                 </div>
-                <span class="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur">
-                  <UIcon :name="`i-lucide-${categoryOf(p.category).icon}`" class="size-3" />{{ catLabel(p.category, categoryOf(p.category).label) }}
+                <span class="absolute left-2 top-2 flex flex-col items-start gap-1">
+                  <span class="flex items-center gap-1 rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur">
+                    <UIcon :name="`i-lucide-${categoryOf(p.category).icon}`" class="size-3" />{{ catLabel(p.category, categoryOf(p.category).label) }}
+                  </span>
+                  <motion.span
+                    v-if="p.trending"
+                    class="flex items-center gap-0.5 rounded-full bg-linear-to-r from-orange-500 to-rose-500 px-2 py-0.5 text-[10px] font-bold text-white shadow"
+                    :animate="{ scale: [1, 1.08, 1] }"
+                    :transition="{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }"
+                  >
+                    <UIcon name="i-lucide-flame" class="size-3" />{{ t('discover.trending') }}
+                  </motion.span>
                 </span>
               </div>
               <div class="px-3 pt-2 pb-3">
@@ -105,7 +115,7 @@ const { places, add, addMany, remove } = usePlaces()
 const { t, pick, isKm, catLabel } = useLang()
 const toast = useToast()
 
-const cat = ref<'all' | CategoryId>('all')
+const cat = ref<'all' | 'trending' | CategoryId>('all')
 const saving = ref(false)
 
 /** Discover id → your saved place (by link, or same name within 300 m if you added it yourself) */
@@ -127,13 +137,14 @@ const cats = computed(() => {
   for (const p of list.value) counts.set(p.category, (counts.get(p.category) ?? 0) + 1)
   return [
     { id: 'all' as const, label: t('app.all'), n: list.value.length, icon: '', color: '' },
+    ...(list.value.some(p => p.trending) ? [{ id: 'trending' as const, label: t('discover.trending'), n: list.value.filter(p => p.trending).length, icon: 'flame', color: '#f97316' }] : []),
     ...[...counts].sort((a, b) => b[1] - a[1]).map(([id, n]) => {
       const c = categoryOf(id)
       return { id, label: catLabel(id, c.label), n, icon: c.icon, color: c.color }
     }),
   ]
 })
-const shown = computed(() => (cat.value === 'all' ? list.value : list.value.filter(p => p.category === cat.value)))
+const shown = computed(() => (cat.value === 'all' ? list.value : cat.value === 'trending' ? list.value.filter(p => p.trending) : list.value.filter(p => p.category === cat.value)))
 
 function toNew(p: DiscoverPlace) {
   return {
@@ -145,7 +156,7 @@ function toNew(p: DiscoverPlace) {
     notes: isKm.value ? p.blurbKm : p.blurb,
     photos: p.photo ? [p.photo] : [],
     discoverId: p.id,
-    tags: ['discover'],
+    tags: p.trending ? ['discover', 'trending'] : ['discover'],
     source: 'discover' as const,
   }
 }

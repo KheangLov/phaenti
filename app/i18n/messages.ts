@@ -293,6 +293,7 @@ export const en = {
     bannerBody: '{n} famous places to add to your list',
     credit: 'Photos and descriptions from Wikipedia',
     noPhotos: 'Photos load when you’re online',
+    trending: 'Trending',
   },
   measure: {
     title: 'Measure distance',
@@ -615,6 +616,7 @@ export const km: Shape<typeof en> = {
     bannerBody: 'កន្លែងល្បីៗ {n} សម្រាប់បន្ថែមទៅបញ្ជីរបស់អ្នក',
     credit: 'រូបភាព និងការពិពណ៌នាពី Wikipedia',
     noPhotos: 'រូបភាពនឹងបង្ហាញពេលមានអ៊ីនធឺណិត',
+    trending: 'កំពុងល្បី',
   },
   measure: {
     title: 'វាស់ចម្ងាយ',

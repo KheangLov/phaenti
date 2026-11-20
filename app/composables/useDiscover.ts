@@ -18,6 +18,8 @@ export interface DiscoverPlace {
   blurbKm: string
   /** Approximate pin: ask OpenStreetMap for `q`, accept a hit within `r` km whose name contains `match` */
   geo?: { q: string; match: string; r: number }
+  /** Trending now on social media / in recent travel news */
+  trending?: boolean
   /** From Wikipedia, when available */
   photo?: string
   page?: string
