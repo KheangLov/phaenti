@@ -44,6 +44,7 @@ async function fetchWiki(titles: string[]): Promise<Record<string, WikiInfo>> {
   const out: Record<string, WikiInfo> = {}
   for (let i = 0; i < titles.length; i += 20) {
     const chunk = titles.slice(i, i + 20)
+    for (const t of chunk) out[t] = {} // remember misses too, so we don't ask again
     const q = new URLSearchParams({
       action: 'query', format: 'json', formatversion: '2', origin: '*', redirects: '1',
       prop: 'coordinates|pageimages|extracts|info', inprop: 'url',
@@ -81,12 +82,16 @@ function start() {
     try {
       const res = await fetch('/discover/cambodia.json')
       base.value = (await res.json()).places
-      const cached = readCache()
-      if (cached) wiki.value = cached
-      if (!cached && navigator.onLine !== false) {
+      const cached = readCache() ?? {}
+      wiki.value = cached
+      // Only ask Wikipedia about places it hasn't told us about yet (e.g. newly added to the collection)
+      const missing = base.value.map(p => p.wiki).filter(t => !(t in cached))
+      if (missing.length && navigator.onLine !== false) {
         try {
-          wiki.value = await fetchWiki(base.value.map(p => p.wiki))
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), data: wiki.value }))
+          wiki.value = { ...cached, ...(await fetchWiki(missing)) }
+          let at = Date.now()
+          try { at = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null')?.at ?? at } catch { /* ignore */ }
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Object.keys(cached).length ? at : Date.now(), data: wiki.value }))
         } catch {
           failed.value = true
         }
