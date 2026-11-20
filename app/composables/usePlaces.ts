@@ -2,6 +2,7 @@ import { liveQuery } from 'dexie'
 import type { Place, PlaceStatus } from '~/utils/db'
 import { CATEGORY_MAP, isPersonal, type CategoryId } from '~/utils/categories'
 import { db } from '~/utils/db'
+import { cleanUpPhotos, cleanPhotoLink, photosForBackup, restorePhotos } from '~/utils/photos'
 
 import { isHiddenPoint, useHidden } from '~/composables/useHidden'
 
@@ -24,6 +25,8 @@ function start() {
     },
     error: (e) => console.error('[phaenti] db', e),
   })
+  // Tidy photos left behind by deleted places (from earlier sessions, so undo still works now)
+  setTimeout(() => void cleanUpPhotos().catch(() => {}), 8000)
 }
 
 async function requestPersist() {
@@ -44,6 +47,10 @@ export interface NewPlace {
   category?: CategoryId
   person?: string
   address?: string
+  notes?: string
+  tags?: string[]
+  photos?: string[]
+  discoverId?: string
   source?: Place['source']
 }
 
@@ -52,6 +59,8 @@ export interface ExportFile {
   version: 1
   exportedAt: string
   places: Place[]
+  /** Photos kept on the device, as data URLs keyed by id */
+  photoData?: Record<string, string>
 }
 
 export function usePlaces() {
@@ -68,10 +77,12 @@ export function usePlaces() {
       category: p.category ?? 'other',
       ...(p.person ? { person: p.person.trim() } : {}),
       address: p.address ?? '',
-      notes: '',
+      notes: p.notes ?? '',
       rating: 0,
       visitedAt: p.status === 'been' && !isPersonal(p.category) ? new Date().toISOString().slice(0, 10) : null,
-      tags: [],
+      tags: p.tags ?? [],
+      ...(p.photos?.length ? { photos: p.photos } : {}),
+      ...(p.discoverId ? { discoverId: p.discoverId } : {}),
       source: p.source ?? 'map',
       createdAt: now,
       updatedAt: now,
@@ -95,8 +106,19 @@ export function usePlaces() {
     await db.places.put(place)
   }
 
-  function toExport(): ExportFile {
-    return { app: 'phaenti', version: 1, exportedAt: new Date().toISOString(), places: allPlaces.value }
+  async function toExport(): Promise<ExportFile> {
+    const places = allPlaces.value
+    const photoData = await photosForBackup(places.flatMap(p => p.photos ?? []))
+    return { app: 'phaenti', version: 1, exportedAt: new Date().toISOString(), places, ...(Object.keys(photoData).length ? { photoData } : {}) }
+  }
+
+  /** Add many at once (e.g. a Discover collection) in one transaction */
+  async function addMany(list: NewPlace[]) {
+    const out: Place[] = []
+    await db.transaction('rw', db.places, async () => {
+      for (const p of list) out.push(await add(p))
+    })
+    return out
   }
 
   /** Merge by id; newer updatedAt wins. Returns counts. */
@@ -109,6 +131,7 @@ export function usePlaces() {
         : []
     let added = 0
     let updated = 0
+    await restorePhotos(json?.photoData)
     await db.transaction('rw', db.places, async () => {
       for (const raw of incoming) {
         const p = normalize(raw)
@@ -127,7 +150,7 @@ export function usePlaces() {
     return { added, updated, total: incoming.length }
   }
 
-  return { places, ready, add, update, remove, restore, toExport, importFile }
+  return { places, allPlaces, ready, add, addMany, update, remove, restore, toExport, importFile }
 }
 
 function fromFeature(f: any) {
@@ -153,8 +176,23 @@ function normalize(r: any): Place | null {
     rating: Math.max(0, Math.min(5, Number(r.rating) || 0)),
     visitedAt: typeof r.visitedAt === 'string' ? r.visitedAt : null,
     tags: Array.isArray(r.tags) ? r.tags.map(String) : [],
+    ...(Array.isArray(r.photos) ? { photos: cleanPhotos(r.photos) } : {}),
+    ...(typeof r.discoverId === 'string' && r.discoverId ? { discoverId: r.discoverId.slice(0, 80) } : {}),
     source: 'import',
     createdAt: Number(r.createdAt) || now,
     updatedAt: Number(r.updatedAt) || now,
   }
+}
+
+function cleanPhotos(list: unknown[]): string[] {
+  const out: string[] = []
+  for (const x of list) {
+    if (typeof x !== 'string') continue
+    if (/^local:[\w-]{8,64}$/.test(x)) out.push(x)
+    else {
+      const u = cleanPhotoLink(x)
+      if (u) out.push(u)
+    }
+  }
+  return out.slice(0, 30)
 }

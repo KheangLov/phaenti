@@ -1,6 +1,34 @@
 <template>
   <div class="px-5 pb-6">
     <PersonalShortcuts class="mb-4" />
+
+    <!-- Discover famous places -->
+    <motion.button
+      v-if="discoverLeft > 0"
+      class="relative mb-4 flex w-full items-center gap-3 overflow-hidden rounded-3xl bg-linear-to-br from-amber-400/20 via-rose-400/15 to-violet-500/20 p-3 text-left active:scale-[0.98] transition"
+      :initial="{ opacity: 0, y: 8 }"
+      :animate="{ opacity: 1, y: 0 }"
+      @click="discoverOpen = true"
+    >
+      <div class="relative h-14 w-20 shrink-0">
+        <div
+          v-for="(p, i) in discoverPreview"
+          :key="p.id"
+          class="absolute top-0 size-14 overflow-hidden rounded-2xl shadow-md ring-2 ring-(--ui-bg)"
+          :style="{ left: `${i * 12}px`, transform: `rotate(${(i - 1) * 6}deg)`, zIndex: 3 - i }"
+        >
+          <PlacePhoto :photo="p.photo!" class="size-full" />
+        </div>
+        <div v-if="!discoverPreview.length" class="grid size-14 place-items-center rounded-2xl bg-linear-to-br from-amber-400 to-rose-500 text-white">
+          <UIcon name="i-lucide-sparkles" class="size-6" />
+        </div>
+      </div>
+      <span class="min-w-0 flex-1">
+        <span class="block text-[15px] font-semibold">{{ t('discover.bannerTitle') }}</span>
+        <span class="block text-[13px] text-(--ui-text-muted)">{{ t('discover.bannerBody', { n: discoverLeft }) }}</span>
+      </span>
+      <UIcon name="i-lucide-chevron-right" class="size-5 shrink-0 text-(--ui-text-dimmed)" />
+    </motion.button>
     <ExplorerStats v-if="admin.lookupReady.value && places.some(p => !isPersonal(p.category))" class="mb-4" />
 
     <!-- Empty state -->
@@ -16,6 +44,9 @@
       <p class="mt-1.5 max-w-xs text-sm text-(--ui-text-muted)">
         {{ t('list.emptyBody') }}
       </p>
+      <UButton class="mt-5 rounded-2xl" size="lg" icon="i-lucide-sparkles" color="primary" variant="soft" @click="discoverOpen = true">
+        {{ t('menu.discover') }}
+      </UButton>
     </div>
 
     <TransitionGroup
@@ -33,7 +64,11 @@
           class="flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left transition active:scale-[0.98] active:bg-(--ui-bg-elevated) hover:bg-(--ui-bg-elevated)/60"
           @click="open(p)"
         >
-          <img :src="pinDataUrl(p.category, p.status)" alt="" class="h-11 w-9 shrink-0" loading="lazy">
+          <span v-if="p.photos?.length" class="relative shrink-0">
+            <PlacePhoto :photo="p.photos[0]!" class="size-12 rounded-2xl" />
+            <img :src="pinDataUrl(p.category, p.status)" alt="" class="absolute -bottom-1 -right-1.5 h-6 w-5 drop-shadow" loading="lazy">
+          </span>
+          <img v-else :src="pinDataUrl(p.category, p.status)" alt="" class="h-11 w-9 shrink-0" loading="lazy">
           <span class="min-w-0 flex-1">
             <span class="block truncate text-[15px] font-medium">{{ p.name }}</span>
             <span class="block truncate text-[13px] text-(--ui-text-muted)">{{ subtitle(p) }}</span>
@@ -66,7 +101,13 @@ import { pinDataUrl } from '~/utils/pins'
 import { placeAdmin } from '~/composables/useAdmin'
 
 const { places, ready } = usePlaces()
-const { filter, select, mapApi } = useAppState()
+const { filter, select, mapApi, discoverOpen } = useAppState()
+const { places: discover } = useDiscover()
+const discoverLeft = computed(() => {
+  const ids = new Set(places.value.map(p => p.discoverId).filter(Boolean))
+  return discover.value.filter(d => !ids.has(d.id)).length
+})
+const discoverPreview = computed(() => discover.value.filter(d => d.photo).slice(0, 3))
 const admin = useAdmin()
 const { t, pick, catLabel, locale } = useLang()
 

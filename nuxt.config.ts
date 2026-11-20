@@ -13,7 +13,7 @@ export default defineNuxtConfig({
       scan: true,
       sizeLimitKb: 96,
       // Icons referenced dynamically (categories)
-      icons: ['utensils', 'coffee', 'wine', 'landmark', 'trees', 'umbrella', 'mountain', 'bed-double', 'shopping-bag', 'palette', 'plane', 'map-pin', 'map', 'building-2', 'home', 'flag', 'history', 'link', 'navigation', 'search', 'x', 'chevron-right', 'arrow-up-left', 'house', 'briefcase-business', 'users-round', 'heart-handshake', 'car-front', 'motorbike', 'bike', 'footprints', 'circle-dot', 'flag', 'arrow-up', 'arrow-up-right', 'corner-up-right', 'undo-2', 'corner-up-left', 'split', 'merge', 'rotate-cw', 'ship', 'route', 'ruler'].map(i => `lucide:${i}`),
+      icons: ['utensils', 'coffee', 'wine', 'landmark', 'trees', 'umbrella', 'mountain', 'bed-double', 'shopping-bag', 'palette', 'plane', 'map-pin', 'map', 'building-2', 'home', 'flag', 'history', 'link', 'navigation', 'search', 'x', 'chevron-right', 'arrow-up-left', 'house', 'briefcase-business', 'users-round', 'heart-handshake', 'car-front', 'motorbike', 'bike', 'footprints', 'circle-dot', 'flag', 'arrow-up', 'arrow-up-right', 'corner-up-right', 'undo-2', 'corner-up-left', 'split', 'merge', 'rotate-cw', 'ship', 'route', 'ruler', 'sparkles', 'bookmark-plus', 'bookmark-check', 'bookmark-minus', 'badge-check', 'image', 'image-off', 'image-plus', 'camera', 'link', 'link-2-off', 'external-link', 'star', 'loader-circle', 'utensils', 'coffee', 'wine', 'landmark', 'trees', 'umbrella', 'mountain', 'bed-double', 'shopping-bag', 'palette', 'plane', 'map-pin'].map(i => `lucide:${i}`),
     },
   },
   colorMode: { preference: 'system', fallback: 'light' },
@@ -90,7 +90,7 @@ export default defineNuxtConfig({
       navigateFallback: 'index.html',
       navigateFallbackDenylist: [/^\/admin\//],
       // App shell + Cambodia boundaries, names and search index: all available offline from first launch
-      globPatterns: ['**/*.{js,mjs,css,html,png,svg,ico,webmanifest,woff2}', 'admin/**/*.{json,pbf}', 'styles/*.json', 'geo/*.json'],
+      globPatterns: ['**/*.{js,mjs,css,html,png,svg,ico,webmanifest,woff2}', 'admin/**/*.{json,pbf}', 'styles/*.json', 'geo/*.json', 'discover/*.json'],
       globIgnores: ['screenshots/**'],
       maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       cleanupOutdatedCaches: true,
@@ -130,6 +130,18 @@ export default defineNuxtConfig({
             expiration: { maxEntries: 40000, maxAgeSeconds: 60 * 60 * 24 * 60 },
             cacheableResponse: { statuses: [0, 200] },
           },
+        },
+        {
+          // Discover photos and descriptions from Wikipedia / Wikimedia
+          urlPattern: /^https:\/\/en\.wikipedia\.org\/w\/api\.php.*/,
+          handler: 'NetworkFirst',
+          options: { cacheName: 'wiki', networkTimeoutSeconds: 6, expiration: { maxEntries: 20 }, cacheableResponse: { statuses: [0, 200] } },
+        },
+        {
+          // Place photos from the web (links you add, Wikimedia thumbnails): keep for offline
+          urlPattern: ({ request, url }: { request: Request; url: URL }) => request.destination === 'image' && url.origin !== self.location.origin && !/tiles\.(openfreemap|versatiles)\.org/.test(url.hostname),
+          handler: 'CacheFirst',
+          options: { cacheName: 'photos', expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 180, purgeOnQuotaError: true }, cacheableResponse: { statuses: [0, 200] } },
         },
         {
           // Routing is live only: never serve a stale route

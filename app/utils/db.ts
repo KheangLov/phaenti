@@ -17,13 +17,27 @@ export interface Place {
   rating: number // 0 = unrated, 1..5
   visitedAt: string | null // YYYY-MM-DD
   tags: string[]
-  source: 'map' | 'search' | 'location' | 'import'
+  /** Cover first. Each entry is a web link (https://…) or a photo kept on this device (local:<id>) */
+  photos?: string[]
+  /** Set when the place came from the Discover collection, so it isn't added twice */
+  discoverId?: string
+  source: 'map' | 'search' | 'location' | 'import' | 'discover'
   createdAt: number
   updatedAt: number
 }
 
+/** A photo taken or picked on this device, already shrunk to a sensible size */
+export interface PhotoBlob {
+  id: string
+  blob: Blob
+  w: number
+  h: number
+  createdAt: number
+}
+
 export const db = new Dexie('phaenti') as Dexie & {
   places: EntityTable<Place, 'id'>
+  photos: EntityTable<PhotoBlob, 'id'>
 }
 
 db.version(1).stores({
@@ -34,6 +48,10 @@ db.version(2).stores({
 }).upgrade(tx => tx.table('places').toCollection().modify((p: Place) => {
   if (!p.category) p.category = 'other'
 }))
+db.version(3).stores({
+  places: 'id, status, category, updatedAt, createdAt, name, discoverId',
+  photos: 'id, createdAt',
+})
 
 export const STATUS_COLORS: Record<PlaceStatus, string> = {
   been: '#10b981',

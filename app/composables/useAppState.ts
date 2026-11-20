@@ -61,6 +61,10 @@ const route = ref<RouteRequest | null>(null)
 const measuring = ref(false)
 const measurePts = shallowRef<LngLat[]>([])
 const measureClosed = ref(false)
+/** Full-screen photo viewer */
+const photoViewer = ref<{ placeId: string; index: number } | null>(null)
+/** Discover famous places sheet */
+const discoverOpen = ref(false)
 
 function pref(key: string, fallback: boolean) {
   const r = ref(fallback)
@@ -135,7 +139,7 @@ export function useAppState() {
   }
   return {
     selectedId, draft, area, picking, pendingCategory, searching, filter, snap, mapApi,
-    route, measuring, measurePts, measureClosed, openRoute,
+    route, measuring, measurePts, measureClosed, openRoute, photoViewer, discoverOpen,
     showBoundaries, showExplored, styleChoice,
     select, openDraft, openArea, closeAll,
   }

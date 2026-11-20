@@ -34,10 +34,13 @@
 import { motion, useMotionValue, animate } from 'motion-v'
 import type { SheetSnap } from '~/composables/useAppState'
 
-const props = withDefaults(defineProps<{ hidden?: boolean; peek?: number; dismissible?: boolean }>(), { hidden: false, peek: 156, dismissible: false })
+const props = withDefaults(defineProps<{ hidden?: boolean; peek?: number; dismissible?: boolean; contentKey?: string }>(), { hidden: false, peek: 156, dismissible: false })
 const emit = defineEmits<{ dismiss: [] }>()
 const { t } = useLang()
 const snap = defineModel<SheetSnap>('snap', { default: 'peek' })
+const bodyEl = useTemplateRef<HTMLElement>('body')
+// A new card (place, route, area…) always starts at its top
+watch(() => props.contentKey, () => bodyEl.value?.scrollTo({ top: 0 }))
 
 const winH = ref(typeof window !== 'undefined' ? window.innerHeight : 800)
 const sheetH = computed(() => Math.round(winH.value * 0.92))

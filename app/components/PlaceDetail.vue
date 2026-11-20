@@ -36,6 +36,8 @@
       <UButton icon="i-lucide-x" color="neutral" variant="soft" class="rounded-full" :aria-label="t('place.close')" @click="select(null)" />
     </div>
 
+    <PhotoStrip :place="place" class="mt-4" />
+
     <template v-if="personal">
       <div class="mt-4">
         <PersonalPicker :model-value="place.category" @update:model-value="setCategory" />

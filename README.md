@@ -72,6 +72,13 @@ in your backup but are not shown. The shape (`public/geo/hidden-th.json`) is Tha
 geoBoundaries minus Cambodia's territory, so nothing inside Cambodia is ever covered.
 Logic lives in `app/composables/useHidden.ts`.
 
+## Discover & photos
+
+- **Discover Cambodia** (✨ button next to the filters, or ⋯ menu): 45 hand-picked famous and beautiful places — Angkor temples, Preah Vihear, Koh Ker, Phnom Penh landmarks, Kampot/Kep, the islands, waterfalls in Mondulkiri and Ratanakiri. Save one with **+** or all at once to *Want to go* (with Undo).
+  - The list lives in `public/discover/cambodia.json` (names in English and Khmer, short notes, coordinates checked against province boundaries).
+  - On the phone, Wikipedia adds a photo, a short description and exact coordinates (only when they agree with ours within 8 km). Answers are cached for 30 days; photos are cached by the service worker for offline use.
+- **Photos on any place**: add from the camera/gallery (shrunk to 1600 px WebP and kept on the device in IndexedDB) or paste an image link. Tap to view full-screen, swipe, make cover, remove (with Undo). Backups include device photos.
+
 ## Routing & measuring
 
 - **Route** on any place or search result: start from your location, one of your saved homes/offices/family, or the map centre; choose car, moto, bike or walk. Shows time, distance, arrival time and turn-by-turn steps (English or Khmer), then hands off to Google Maps for live navigation.

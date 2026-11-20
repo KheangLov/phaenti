@@ -120,7 +120,7 @@
       <!-- Bottom sheet -->
       <MeasureBar />
 
-      <BottomSheet v-model:snap="snap" :hidden="picking || measuring" :peek="PEEK" :dismissible="!!(draft || selected || area || route)" @dismiss="closeAll">
+      <BottomSheet v-model:snap="snap" :content-key="contentKey" :hidden="picking || measuring" :peek="PEEK" :dismissible="!!(draft || selected || area || route)" @dismiss="closeAll">
         <template #header>
           <div v-if="!draft && !selected && !area && !route" class="px-5 pb-3">
             <div class="flex items-end justify-between">
@@ -157,6 +157,14 @@
                 />
                 <span class="relative">{{ f.label }}</span>
               </button>
+              <motion.button
+                class="ml-auto grid size-9 shrink-0 place-items-center rounded-full bg-linear-to-br from-amber-400 to-rose-500 text-white shadow-md"
+                :aria-label="t('discover.title')"
+                :while-press="{ scale: 0.88 }"
+                @click="discoverOpen = true"
+              >
+                <UIcon name="i-lucide-sparkles" class="size-4.5" />
+              </motion.button>
             </div>
           </div>
         </template>
@@ -181,6 +189,8 @@
       <InstallSheet v-model:open="installOpen" />
       <MapStyleSheet v-model:open="styleOpen" />
       <OfflineSheet v-model:open="offlineOpen" />
+      <DiscoverSheet />
+      <PhotoViewer />
 
       <input ref="fileInput" type="file" accept=".json,.geojson,application/json,application/geo+json" class="hidden" @change="onImport">
     </main>
@@ -199,7 +209,7 @@ const PEEK = 156
 const spring = { type: 'spring', stiffness: 420, damping: 38 } as const
 
 const { places, toExport, importFile } = usePlaces()
-const { route, measuring, measurePts, measureClosed, selectedId, draft, area, picking, pendingCategory, searching, filter, snap, mapApi, closeAll, showBoundaries, showExplored } = useAppState()
+const { photoViewer, discoverOpen, route, measuring, measurePts, measureClosed, selectedId, draft, area, picking, pendingCategory, searching, filter, snap, mapApi, closeAll, showBoundaries, showExplored } = useAppState()
 const colorMode = useColorMode()
 const toast = useToast()
 const { $pwa } = useNuxtApp()
@@ -293,6 +303,8 @@ useBackLayer('search', () => searching.value, () => search.value?.close())
 useBackLayer('style', () => styleOpen.value, () => (styleOpen.value = false))
 useBackLayer('offline', () => offlineOpen.value, () => (offlineOpen.value = false))
 useBackLayer('install', () => installOpen.value, () => (installOpen.value = false))
+useBackLayer('discover', () => discoverOpen.value, () => (discoverOpen.value = false))
+useBackLayer('photo', () => !!photoViewer.value, () => (photoViewer.value = null))
 
 // Status-bar colour follows the app theme
 watch(() => colorMode.value, (m) => {
@@ -337,7 +349,7 @@ watch(() => places.value.length, (n, old) => {
 
 // ---- Backup ----
 async function exportBackup() {
-  const data = JSON.stringify(toExport(), null, 2)
+  const data = JSON.stringify(await toExport(), null, 2)
   const name = `phaenti-backup-${new Date().toISOString().slice(0, 10)}.json`
   const file = new File([data], name, { type: 'application/json' })
   try {
@@ -387,6 +399,7 @@ const menu = computed<DropdownMenuItem[][]>(() => [
     { label: t('menu.restore'), icon: 'i-lucide-upload', onSelect: () => fileInput.value?.click() },
   ],
   [
+    { label: t('menu.discover'), icon: 'i-lucide-sparkles', onSelect: () => (discoverOpen.value = true) },
     { label: t('menu.styles'), icon: 'i-lucide-layers', onSelect: () => (styleOpen.value = true) },
   ],
   [
@@ -427,7 +440,8 @@ onMounted(() => {
 
   window.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return
-    if (picking.value) picking.value = false
+    if (photoViewer.value) photoViewer.value = null
+    else if (picking.value) picking.value = false
     else if (draft.value || selectedId.value || area.value) closeAll()
   })
 })
