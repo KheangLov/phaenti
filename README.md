@@ -85,6 +85,13 @@ Logic lives in `app/composables/useHidden.ts`.
 - Routes come from the free community [Valhalla](https://valhalla1.openstreetmap.de) server, falling back to [OSRM](https://routing.openstreetmap.de). Both allow about one request per second and need a connection. Routes never pass through the hidden country (`public/geo/route-avoid-th.json`).
 - **Measure** (ruler button or ⋯ menu): tap points to measure a path, drag points to adjust, tap the first point to close the shape and get its area and perimeter. Back closes it.
 
+## Speed
+
+- Thai labels are removed with a two-step outline check (an ~80-point outline first, then a ~700-point one) plus a Thai-letter check on label names. The old single 3,000-point outline made every tile in western Cambodia about 16× slower to prepare.
+- The map draws at most 2× the screen resolution: no visible difference on 3× phones, about half the drawing work.
+- The map library, its worker, the map style and the label outline download at the same time; connections to the tile servers open before the map starts.
+- Recently seen tiles stay in memory longer, and the tile index refreshes in the background instead of being stuck on an old version.
+
 ## Map styles
 
 Layers button → 12 looks with live previews: Auto (follows light/dark), Liberty, Positron, Bright,

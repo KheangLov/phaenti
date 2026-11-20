@@ -47,12 +47,24 @@ const isDark = computed(() => styleDef.value.dark)
 let fonts = { regular: ['Noto Sans Regular'], bold: ['Noto Sans Bold'], italic: ['Noto Sans Italic'] }
 
 /** Style URL, or a repainted style object for Phaenti themes (base JSON is cached offline by the SW). */
+function allAbsolute(st: StyleSpecification) {
+  const links: unknown[] = [st.sprite, st.glyphs]
+  for (const src of Object.values(st.sources ?? {})) {
+    const x = src as { url?: string; tiles?: string[]; data?: unknown }
+    links.push(x.url, ...(x.tiles ?? []), typeof x.data === 'string' ? x.data : undefined)
+  }
+  const flat = links.flatMap(l => (Array.isArray(l) ? l.map(v => (typeof v === 'object' && v ? (v as { url: string }).url : v)) : [l]))
+  return flat.every(l => l == null || (typeof l === 'string' && /^https?:\/\//.test(l)))
+}
+
 async function resolveStyle(def: MapStyleDef): Promise<string | StyleSpecification> {
   const url = def.url.startsWith('/') ? `${location.origin}${def.url}` : def.url
-  if (!def.palette) return url
   try {
-    const base = await (await fetch(url)).json()
-    return recolor(base, def.palette)
+    // Fetch the style ourselves so it downloads in parallel with the map library
+    const base = await (await fetch(url)).json() as StyleSpecification
+    if (def.palette) return recolor(base, def.palette)
+    // Only hand over the object when every link in it is absolute (relative ones need the style URL)
+    return allAbsolute(base) ? base : url
   } catch {
     return url
   }
@@ -126,13 +138,21 @@ function isExpressionFilter(f: unknown): boolean {
   }
 }
 
-let labelArea: GeoJSON.MultiPolygon | null = null
+/** Where basemap labels are hidden. `gate` is a cheap outline (~80 points) checked first;
+ *  only labels inside it are tested against the finer `area` (~300 points). One big
+ *  outline made every tile in western Cambodia ~16× slower to prepare. */
+let labelArea: { gate: GeoJSON.MultiPolygon; area: GeoJSON.MultiPolygon } | null = null
+/** Common Thai-script letters: a label containing any of them is Thai, wherever it sits */
+const THAI_CHARS = ['า', 'ร', 'น', 'อ', 'ง', 'ม', 'ก', 'เ', 'ี', 'ั', '่', '้']
 let convertFilter: ((f: unknown) => unknown) | null = null
 async function loadLabelArea() {
   // Loaded lazily alongside the map so the app's first screen stays small
   convertFilter ??= (await import('@maplibre/maplibre-gl-style-spec/dist/feature_filter/convert.mjs')).convertFilter as (f: unknown) => unknown
   if (labelArea) return
-  try { labelArea = await (await fetch(HIDDEN_LABELS_URL)).json() } catch { /* offline before first cache */ }
+  try {
+    const j = await (await fetch(HIDDEN_LABELS_URL)).json()
+    if (j?.gate && j?.area) labelArea = j
+  } catch { /* offline before first cache */ }
 }
 
 function hideCountries() {
@@ -142,9 +162,11 @@ function hideCountries() {
   //    ("Thailand", "Gulf of Thailand", "ไทย"…). Done with filters, so no letters
   //    are left peeking out across the border.
   const fields = ['name', 'name_en', 'name:en', 'name:latin', 'name_int', 'name:nonlatin']
+  // Cheapest checks first: 'any' stops at the first match
   const hiddenLabel: ExpressionSpecification = ['any',
     ...fields.flatMap(k => HIDDEN_NAME_PARTS.map(p => ['in', p, ['to-string', ['get', k]]] as ExpressionSpecification)),
-    ...(labelArea ? [['within', labelArea] as unknown as ExpressionSpecification] : []),
+    ...['name', 'name:nonlatin'].flatMap(k => THAI_CHARS.map(c => ['in', c, ['to-string', ['get', k]]] as ExpressionSpecification)),
+    ...(labelArea ? [['all', ['within', labelArea.gate], ['within', labelArea.area]] as unknown as ExpressionSpecification] : []),
   ]
   for (const l of style.layers) {
     if (l.type !== 'symbol') continue
@@ -159,7 +181,7 @@ function hideCountries() {
   }
   // 2. Turn the country into sea: fill its land with the style's own water colour,
   //    above every basemap layer, so it blends into the surrounding water.
-  map.addSource('hidden', { type: 'geojson', data: `${location.origin}${HIDDEN_GEO_URL}` })
+  map.addSource('hidden', { type: 'geojson', data: `${location.origin}${HIDDEN_GEO_URL}`, maxzoom: 12, tolerance: 0.6, buffer: 32 })
   map.addLayer({ id: 'hidden-fill', type: 'fill', source: 'hidden', paint: { 'fill-color': waterColor(style), 'fill-antialias': true } })
 }
 
@@ -721,15 +743,17 @@ function savedCamera() {
 }
 
 onMounted(async () => {
-  const [mod, worker] = await Promise.all([
+  // Download the map library, its worker and the style all at once
+  const [mod, worker, , initialStyle] = await Promise.all([
     import('maplibre-gl'),
     import('maplibre-gl/dist/maplibre-gl-worker.mjs?url'),
     import('maplibre-gl/dist/maplibre-gl.css'),
+    resolveStyle(styleDef.value),
+    loadLabelArea(),
   ])
   mod.setWorkerUrl(worker.default)
   ml = mod
   const cam = savedCamera()
-  const initialStyle = await resolveStyle(styleDef.value)
   map = new mod.Map({
     container: el.value!,
     style: initialStyle,
@@ -737,7 +761,11 @@ onMounted(async () => {
     center: cam?.center ?? [104.9, 12.55],
     zoom: cam?.zoom ?? 6.2,
     attributionControl: false,
-    fadeDuration: 180,
+    fadeDuration: 120,
+    // Phones are often 3× screens: drawing at 2× looks the same and is ~2× less work per frame
+    pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+    // Keep more recently seen tiles in memory so panning back is instant
+    maxTileCacheZoomLevels: 6,
     maxPitch: 0,
     pitchWithRotate: false,
     dragRotate: false,

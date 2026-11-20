@@ -38,7 +38,11 @@ export default defineNuxtConfig({
         { rel: 'manifest', href: '/manifest.webmanifest' },
         { rel: 'icon', type: 'image/png', href: '/favicon.png' },
         { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
+        // Open connections to the tile servers while the app itself is still loading
         { rel: 'preconnect', href: 'https://tiles.openfreemap.org', crossorigin: '' },
+        { rel: 'preconnect', href: 'https://tiles.versatiles.org', crossorigin: '' },
+        { rel: 'dns-prefetch', href: 'https://tiles.openfreemap.org' },
+        { rel: 'dns-prefetch', href: 'https://tiles.versatiles.org' },
       ],
     },
   },
@@ -107,6 +111,13 @@ export default defineNuxtConfig({
         {
           // Map style JSON: fresh when online, cached when offline
           urlPattern: /^https:\/\/tiles\.openfreemap\.org\/styles\/.*/,
+          handler: 'StaleWhileRevalidate',
+          options: { cacheName: 'map-styles', cacheableResponse: { statuses: [0, 200] } },
+        },
+        {
+          // Tile index (TileJSON): points at the current tile version, so refresh it in the
+          // background instead of pinning an old version for months
+          urlPattern: /^https:\/\/tiles\.openfreemap\.org\/[a-z]+\/?$/,
           handler: 'StaleWhileRevalidate',
           options: { cacheName: 'map-styles', cacheableResponse: { statuses: [0, 200] } },
         },
